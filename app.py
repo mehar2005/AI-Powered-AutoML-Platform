@@ -9,4 +9,8 @@ st.set_page_config(
 )
 
 st.title("🤖 AI Powered AutoML Platform", text_alignment = 'center')
-st.subheader("Bridging the Gap Between Data and Machine Learning", text_alignment = 'center')
+col1, col2 = st.columns([0.85, 0.15])
+with col1:
+    st.subheader("Bridging the Gap Between Data and Machine Learning", text_alignment = 'center')
+with col2:
+    st.caption(f"Last Updated: {datetime.today().strftime("%I:%M:%S %p")}")
