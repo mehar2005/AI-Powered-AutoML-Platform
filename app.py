@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime
 import file_uploaderOverviewCleaning as file_uploaderOverviewCleaning
+from eda import eda_show
 
 st.set_page_config(
     page_title = "AI Powered AutoML Platform",
@@ -16,4 +17,12 @@ with col1:
 with col2:
     st.caption(f"Last Updated: {datetime.today().strftime("%I:%M:%S %p")}")
 
+st.divider()
+
 file = file_uploaderOverviewCleaning.file_uploader_show()
+
+st.divider()
+
+eda_show()
+
+st.title('Isto Agge Rabb Bharose 🙏', text_alignment = 'center')

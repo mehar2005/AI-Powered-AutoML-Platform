@@ -199,6 +199,8 @@ def apply_column_values_transformation():
         "Right Strip",
         "Capitalize",
         "Capitalize + Strip",
+        "Make all values equal",
+        "Change specific value(s)"
     ]
 
     if c_type not in valid_operations:
@@ -206,6 +208,14 @@ def apply_column_values_transformation():
             "Invalid transformation selected."
         )
         return
+
+    if c_type == 'Make all values equal':
+        df_copy[column] = st.session_state.new_value
+    elif c_type == 'Change specific value(s)':
+        df_copy[column] = df_copy[column].replace(
+            st.session_state.old_value, 
+            st.session_state.new_value
+        )
 
     df_copy[column] = df_copy[column].apply(
         lambda x: apply_operation(x, c_type, chars)
@@ -221,6 +231,8 @@ def apply_column_values_transformation():
         "Capitalize + Strip": (
             "Column values capitalized and stripped successfully!"
         ),
+        "Make all values equal" : "All values changed successfully!",
+        "Change specific value(s)" : "Value(s) changed successfully!"
     }
 
     st.session_state.column_values_transformation_msg = messages[c_type]
@@ -284,7 +296,7 @@ def apply_data_format_transformation(): #AI, need to understand this!
 
             if operation == "Remove Commas/Currency Symbols":
                 values = values.str.replace(
-                    r"[₹$€£,\s]", "", regex=True
+                    r"[₹$€£¥₩₽₺₴₦₱₫฿₪₨,\s-]", "", regex=True
                 )
 
                 converted = pd.to_numeric(
@@ -501,6 +513,121 @@ def file_uploader_show():
                 st.write(f"• A total of {st.session_state.file_uploaded.isnull().sum().sum()} values.")
                 st.write(f"• {st.session_state.file_uploaded.duplicated().sum()} duplicate rows found")
 
+            st.subheader("Data Quality Report", text_alignment = 'center')
+            dqr_num, dqr_cat, dqr_dt, dqr_bool = st.columns(4, border = True)
+
+            df = st.session_state.file_uploaded
+
+            with dqr_num:
+                st.subheader('Numerical Columns', text_alignment = 'center')
+                columns = st.session_state.file_uploaded.select_dtypes(
+                    include = ['number']
+                )
+                if columns.empty:
+                    st.warning('No Columns found!')
+                else:
+                    for col in columns:
+                        with st.expander(f'{col}'):
+                            st.markdown(f'Column Name: {col}')
+                            st.markdown(f'Total Values: {len(df[col])}')
+                            st.markdown(f'Missing Values: {df[col].isnull().sum()}')
+                            st.markdown(f'Missing Percentage: {(df[col].isnull().sum()) / (len(df[col])) * 100}')
+                            st.markdown(f"Duplicate Contribution: {'No need to investigate' if (df[col].nunique(dropna = False) == len(df[col])) else 'Investigate'}")
+                            st.markdown(f'Constant Column: {'Constant' if len(df[col].unique()) == 1 else 'Not Constant'}')
+                            if pd.api.types.is_numeric_dtype(df[col]):
+                                q1 = df[col].quantile(0.25)
+                                q3 = df[col].quantile(0.75)
+                                IQR = q3 - q1
+                                lower_limit = q1 - 1.5 * IQR
+                                upper_limit = q3 + 1.5 * IQR
+                                outlier_vls_col = df[col][~(df[col] >= lower_limit) | ~(df[col] <= upper_limit)]
+                                st.markdown('Outliers : ' + 'No Outliers' if len(outlier_vls_col) == 0 else 'Outliers : exist')
+            with dqr_cat:
+                st.subheader('Categorical Columns', text_alignment = 'center')
+                columns = st.session_state.file_uploaded.select_dtypes(
+                    include = ['object', 'category', 'string']
+                )
+                if columns.empty:
+                    st.warning('No Columns found!')
+                else:
+                    for col in columns:
+                        with st.expander(f'{col}'):
+                            st.markdown(f'Column Name: {col}')
+                            st.markdown(f'Total Values: {len(df[col])}')
+                            st.markdown(f'Missing Values: {df[col].isnull().sum()}')
+                            st.markdown(f'Missing Percentage: {(df[col].isnull().sum()) / (len(df[col])) * 100}')
+                            st.markdown(f"Duplicate Contribution: {'No need to investigate' if (df[col].nunique(dropna = False) == len(df[col])) else 'Investigate'}")
+                            st.markdown(f'Constant Column: {'Constant' if len(df[col].unique()) == 1 else 'Not Constant'}')
+                            if pd.api.types.is_numeric_dtype(df[col]):
+                                q1 = df[col].quantile(0.25)
+                                q3 = df[col].quantile(0.75)
+                                IQR = q3 - q1
+                                lower_limit = q1 - 1.5 * IQR
+                                upper_limit = q3 + 1.5 * IQR
+                                outlier_vls_col = df[col][~(df[col] >= lower_limit) | ~(df[col] <= upper_limit)]
+                                st.markdown('Outliers : ' + 'No Outliers' if len(outlier_vls_col) == 0 else 'Outliers : exist')
+            with dqr_dt:
+                st.subheader('Datetime Columns', text_alignment = 'center')
+                columns = st.session_state.file_uploaded.select_dtypes(
+                    include = ['datetime']
+                )
+                if columns.empty:
+                    st.warning('No Columns found!')
+                else:
+                    for col in columns:
+                        with st.expander(f'{col}'):
+                            st.markdown(f'Column Name: {col}')
+                            st.markdown(f'Total Values: {len(df[col])}')
+                            st.markdown(f'Missing Values: {df[col].isnull().sum()}')
+                            st.markdown(f'Missing Percentage: {(df[col].isnull().sum()) / (len(df[col])) * 100}')
+                            st.markdown(f"Duplicate Contribution: {'No need to investigate' if (df[col].nunique(dropna = False) == len(df[col])) else 'Investigate'}")
+                            st.markdown(f'Constant Column: {'Constant' if len(df[col].unique()) == 1 else 'Not Constant'}')
+                            if pd.api.types.is_numeric_dtype(df[col]):
+                                q1 = df[col].quantile(0.25)
+                                q3 = df[col].quantile(0.75)
+                                IQR = q3 - q1
+                                lower_limit = q1 - 1.5 * IQR
+                                upper_limit = q3 + 1.5 * IQR
+                                outlier_vls_col = df[col][~(df[col] >= lower_limit) | ~(df[col] <= upper_limit)]
+                                st.markdown('Outliers : ' + 'No Outliers' if len(outlier_vls_col) == 0 else 'Outliers : exist')
+            with dqr_bool:
+                st.subheader('Boolean Columns', text_alignment = 'center')
+                columns = st.session_state.file_uploaded.select_dtypes(
+                    include = ['boolean']
+                )
+                if columns.empty:
+                    st.warning('No Columns found!')
+                else:
+                    for col in columns:
+                        with st.expander(f'{col}'):
+                            st.markdown(f'Column Name: {col}')
+                            st.markdown(f'Total Values: {len(df[col])}')
+                            st.markdown(f'Missing Values: {df[col].isnull().sum()}')
+                            st.markdown(f'Missing Percentage: {(df[col].isnull().sum()) / (len(df[col])) * 100}')
+                            st.markdown(f"Duplicate Contribution: {'No need to investigate' if (df[col].nunique(dropna = False) == len(df[col])) else 'Investigate'}")
+                            st.markdown(f'Constant Column: {'Constant' if len(df[col].unique()) == 1 else 'Not Constant'}')
+
+            col1, col2 = st.columns(2, border = True)
+            df = st.session_state.file_uploaded
+            with col1:
+                st.subheader('Columns containing Null values', text_alignment = 'center')
+                for col in df:
+                    if df[col].isnull().sum() > 0:
+                        st.markdown(f'• {col}')
+            with col2:
+                st.subheader("Columns to be removed", text_alignment = 'center')
+                col_tb_rem = []
+                for col in df.columns:
+                    if df[col].isnull().sum() / len(df[col]) > 0.5:
+                        col_tb_rem.append(col)
+
+                if len(col_tb_rem) == 0:
+                    st.warning('No suggestions found!')
+                else:
+                    st.write("These columns contain null values greater than 50% and can be removed:")
+                    for col in col_tb_rem:
+                        st.markdown(f'• {col}')
+
             st.subheader("Dataset Preview", text_alignment = 'center')
             col1, col2 = st.columns([0.20, 0.80], border = True)
             with col1:
@@ -532,7 +659,8 @@ def file_uploader_show():
                     if preview_number:
                         with col2:
                             st.dataframe(st.session_state.file_uploaded.sample(n = preview_number), hide_index = True)
-
+            
+            st.subheader('Datatype Detection & Handling', text_alignment = 'center')
             dtype_col, clm_correct_dtype_col = st.columns(2, border = True)
 
             with dtype_col:
@@ -762,9 +890,9 @@ def file_uploader_show():
                     on_click=apply_column_name_transformation
                     )
 
-            if "column_name_transformation_msg" in st.session_state:
-                st.success(st.session_state.column_name_transformation_msg)
-                del st.session_state.column_name_transformation_msg 
+                if "column_name_transformation_msg" in st.session_state:
+                    st.success(st.session_state.column_name_transformation_msg)
+                    del st.session_state.column_name_transformation_msg 
 
             with clm_correct_nm_col2:
                 st.subheader('Column Values', text_alignment = 'center')
@@ -777,7 +905,7 @@ def file_uploader_show():
                 )
                 correct_type = st.selectbox(
                     label='Select Correctness Type',
-                    options=sorted(["Strip", "Capitalize", "Capitalize + Strip", "Left Strip", "Right Strip"]),
+                    options=sorted(["Strip", "Capitalize", "Capitalize + Strip", "Left Strip", "Right Strip", 'Make all values equal', 'Change specific value(s)']),
                     index=0,
                     key = 'col_values_correctness_type'
                 )
@@ -791,10 +919,24 @@ def file_uploader_show():
                         label='Enter character to strip',
                         value=' ',
                         key='col_values_strip_char' 
-                    )      
+                    ) 
+                elif correct_type == 'Change specific value(s)':
+                    old_val = st.text_input(
+                        label = 'Enter old value',
+                        key = 'old_value'
+                    )
+                    new_val = st.text_input(
+                        label = 'Enter new value',
+                        key = 'new_value'
+                    )
+                elif correct_type == 'Make all values equal':
+                    new_val = st.text_input(
+                        label = 'Enter new value',
+                        key = 'new_value'
+                    )
 
                 st.button(
-                    label = 'Apply Chages',
+                    label = 'Apply Changes',
                     on_click = apply_column_values_transformation
                 )
 
@@ -846,7 +988,7 @@ def file_uploader_show():
                             st.success(st.session_state.null_removal_message)
                             st.session_state.null_removal_message = None
                     else:
-                        st.info('No null values found')
+                        st.warning('No null values found')
 
                 with fill:
                     if st.session_state.file_uploaded.isnull().sum().sum() > 0:
@@ -936,33 +1078,37 @@ def file_uploader_show():
                                 st.success(st.session_state.null_fill_message)
                                 st.session_state.null_fill_message = None
                     else:
-                        st.info('No null values found')
+                        st.warning('No null values found')
 
             with duplicate:
                 st.subheader('Duplicates Handling', text_alignment = 'center')
 
-                column = st.selectbox(
-                    label = 'Select Column',
-                    options = ['All'] + sorted(st.session_state.file_uploaded.columns.tolist()),
-                    key = 'dup_rem_column'
-                    )
+                if (st.session_state.file_uploaded.duplicated().sum() > 0):
 
-                dup_rem_mode = st.selectbox(
-                    label = 'Select duplicates removal type: ',
-                    options = sorted(['Keep First', 'Keep Last', 'Remove All']),
-                    index = 0,
-                    key = 'dup_rem_type'
-                    )
+                    column = st.selectbox(
+                        label = 'Select Column',
+                        options = ['All'] + sorted(st.session_state.file_uploaded.columns.tolist()),
+                        key = 'dup_rem_column'
+                        )
 
-                st.button(
-                    label = 'Apply Changes',
-                    key = 'rem_dup_bt',
-                    on_click = duplicates_removal
-                    )
+                    dup_rem_mode = st.selectbox(
+                        label = 'Select duplicates removal type: ',
+                        options = sorted(['Keep First', 'Keep Last', 'Remove All']),
+                        index = 0,
+                        key = 'dup_rem_type'
+                        )
 
-                if st.session_state.get('dup_rem_message'):
-                    st.success(st.session_state.dup_rem_message)
-                    st.session_state.dup_rem_message = None
+                    st.button(
+                        label = 'Apply Changes',
+                        key = 'rem_dup_bt',
+                        on_click = duplicates_removal
+                        )
+
+                    if st.session_state.get('dup_rem_message'):
+                        st.success(st.session_state.dup_rem_message)
+                        st.session_state.dup_rem_message = None
+                else:
+                    st.warning('No null values found')
 
             with outliers:
                 st.subheader('Outliers Handling', text_alignment = 'center')
@@ -1044,112 +1190,11 @@ def file_uploader_show():
                         # )
 
                 if len(with_outlier_column_not_null_removed) > 0:
-                    st.warning('These columns require handling missing values first')
+                    st.warning('These numerical columns require handling missing values first')
                     with st.expander('View Columns'):
                         for col in with_outlier_column_not_null_removed:
                             st.write(f'• {col}')
 
-            st.subheader("Data Quality Report", text_alignment = 'center')
-            dqr_num, dqr_cat, dqr_dt, dqr_bool = st.columns(4, border = True)
-
-            df = st.session_state.file_uploaded
-
-            with dqr_num:
-                st.subheader('Numerical Columns', text_alignment = 'center')
-                columns = st.session_state.file_uploaded.select_dtypes(
-                    include = ['number']
-                )
-                if columns.empty:
-                    st.warning('No Columns found!')
-                else:
-                    for col in columns:
-                        with st.expander(f'{col}'):
-                            st.markdown(f'Column Name: {col}')
-                            st.markdown(f'Total Values: {len(df[col])}')
-                            st.markdown(f'Missing Values: {df[col].isnull().sum()}')
-                            st.markdown(f'Missing Percentage: {(df[col].isnull().sum()) / (len(df[col])) * 100}')
-                            st.markdown(f"Duplicate Contribution: {'No need to investigate' if (df[col].nunique(dropna = False) == len(df[col])) else 'Investigate'}")
-                            st.markdown(f'Constant Column: {'Constant' if len(df[col].unique()) == 1 else 'Not Constant'}')
-                            if pd.api.types.is_numeric_dtype(df[col]):
-                                q1 = df[col].quantile(0.25)
-                                q3 = df[col].quantile(0.75)
-                                IQR = q3 - q1
-                                lower_limit = q1 - 1.5 * IQR
-                                upper_limit = q3 + 1.5 * IQR
-                                outlier_vls_col = df[col][~(df[col] >= lower_limit) | ~(df[col] <= upper_limit)]
-                                st.markdown('Outliers : ' + 'No Outliers' if len(outlier_vls_col) == 0 else 'Outliers : exist')
-            with dqr_cat:
-                st.subheader('Categorical Columns', text_alignment = 'center')
-                columns = st.session_state.file_uploaded.select_dtypes(
-                    include = ['object', 'category', 'string']
-                )
-                if columns.empty:
-                    st.warning('No Columns found!')
-                else:
-                    for col in columns:
-                        with st.expander(f'{col}'):
-                            st.markdown(f'Column Name: {col}')
-                            st.markdown(f'Total Values: {len(df[col])}')
-                            st.markdown(f'Missing Values: {df[col].isnull().sum()}')
-                            st.markdown(f'Missing Percentage: {(df[col].isnull().sum()) / (len(df[col])) * 100}')
-                            st.markdown(f"Duplicate Contribution: {'No need to investigate' if (df[col].nunique(dropna = False) == len(df[col])) else 'Investigate'}")
-                            st.markdown(f'Constant Column: {'Constant' if len(df[col].unique()) == 1 else 'Not Constant'}')
-                            if pd.api.types.is_numeric_dtype(df[col]):
-                                q1 = df[col].quantile(0.25)
-                                q3 = df[col].quantile(0.75)
-                                IQR = q3 - q1
-                                lower_limit = q1 - 1.5 * IQR
-                                upper_limit = q3 + 1.5 * IQR
-                                outlier_vls_col = df[col][~(df[col] >= lower_limit) | ~(df[col] <= upper_limit)]
-                                st.markdown('Outliers : ' + 'No Outliers' if len(outlier_vls_col) == 0 else 'Outliers : exist')
-            with dqr_dt:
-                st.subheader('Datetime Columns', text_alignment = 'center')
-                columns = st.session_state.file_uploaded.select_dtypes(
-                    include = ['datetime']
-                )
-                if columns.empty:
-                    st.warning('No Columns found!')
-                else:
-                    for col in columns:
-                        with st.expander(f'{col}'):
-                            st.markdown(f'Column Name: {col}')
-                            st.markdown(f'Total Values: {len(df[col])}')
-                            st.markdown(f'Missing Values: {df[col].isnull().sum()}')
-                            st.markdown(f'Missing Percentage: {(df[col].isnull().sum()) / (len(df[col])) * 100}')
-                            st.markdown(f"Duplicate Contribution: {'No need to investigate' if (df[col].nunique(dropna = False) == len(df[col])) else 'Investigate'}")
-                            st.markdown(f'Constant Column: {'Constant' if len(df[col].unique()) == 1 else 'Not Constant'}')
-                            if pd.api.types.is_numeric_dtype(df[col]):
-                                q1 = df[col].quantile(0.25)
-                                q3 = df[col].quantile(0.75)
-                                IQR = q3 - q1
-                                lower_limit = q1 - 1.5 * IQR
-                                upper_limit = q3 + 1.5 * IQR
-                                outlier_vls_col = df[col][~(df[col] >= lower_limit) | ~(df[col] <= upper_limit)]
-                                st.markdown('Outliers : ' + 'No Outliers' if len(outlier_vls_col) == 0 else 'Outliers : exist')
-            with dqr_bool:
-                st.subheader('Boolean Columns', text_alignment = 'center')
-                columns = st.session_state.file_uploaded.select_dtypes(
-                    include = ['bool']
-                )
-                if columns.empty:
-                    st.warning('No Columns found!')
-                else:
-                    for col in columns:
-                        with st.expander(f'{col}'):
-                            st.markdown(f'Column Name: {col}')
-                            st.markdown(f'Total Values: {len(df[col])}')
-                            st.markdown(f'Missing Values: {df[col].isnull().sum()}')
-                            st.markdown(f'Missing Percentage: {(df[col].isnull().sum()) / (len(df[col])) * 100}')
-                            st.markdown(f"Duplicate Contribution: {'No need to investigate' if (df[col].nunique(dropna = False) == len(df[col])) else 'Investigate'}")
-                            st.markdown(f'Constant Column: {'Constant' if len(df[col].unique()) == 1 else 'Not Constant'}')
-                            if pd.api.types.is_numeric_dtype(df[col]):
-                                q1 = df[col].quantile(0.25)
-                                q3 = df[col].quantile(0.75)
-                                IQR = q3 - q1
-                                lower_limit = q1 - 1.5 * IQR
-                                upper_limit = q3 + 1.5 * IQR
-                                outlier_vls_col = df[col][~(df[col] >= lower_limit) | ~(df[col] <= upper_limit)]
-                                st.markdown('Outliers : ' + 'No Outliers' if len(outlier_vls_col) == 0 else 'Outliers : exist')
 
             dw_bt = st.download_button(
                 label = 'Download data as csv',
@@ -1157,4 +1202,3 @@ def file_uploader_show():
                 file_name = 'cleaned_data.csv',
                 mime = 'text/csv'
             )
-
