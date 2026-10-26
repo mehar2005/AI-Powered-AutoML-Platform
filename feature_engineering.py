@@ -464,11 +464,13 @@ def fe_show():
             st.selectbox(
                 label="Select Column",
                 options=numeric_columns,
+                index = 0,
                 key="num_column_binning",
             )
             st.selectbox(
                 label="Select Binning Method",
                 options=["Custom", "Equal Frequency", "Equal Width"],
+                index = 0,
                 key="bin_method",
             )
             st.number_input(
@@ -507,6 +509,7 @@ def fe_show():
             st.selectbox(
                 label="Select Column",
                 options=numeric_columns,
+                index = 0,
                 key="num_column_delete",
             )
             st.checkbox(
@@ -534,12 +537,14 @@ def fe_show():
                     "Add/Subtract/Multiply/Divide a Value",
                     "Combine Two Features",
                 ],
+                index = 0,
                 key="num_column_mathematical_transformation",
             )
             if transformation != "Combine Two Features":
                 st.selectbox(
                     label="Select Column",
                     options=numeric_columns,
+                    index = 0,
                     key="num_column_maths_op",
                 )
                 st.checkbox(
@@ -561,6 +566,7 @@ def fe_show():
                 st.selectbox(
                     label="Select Operation",
                     options=["Addition", "Division", "Multiplication", "Subtraction"],
+                    index = 0,
                     key="change_value_operation",
                 )
                 st.number_input(
@@ -572,16 +578,19 @@ def fe_show():
                 st.selectbox(
                     label="Select First Numerical Feature",
                     options=numeric_columns,
+                    index = 0,
                     key="combine_first_col",
                 )
                 st.selectbox(
                     label="Select Second Numerical Feature",
                     options=numeric_columns,
+                    index = 0,
                     key="combine_second_col",
                 )
                 st.selectbox(
                     label="Select Arithmetic Operator",
                     options=["%", "*", "+", "-", "/", "//", "**"],
+                    index = 0,
                     key="combine_col_arithmetic_operation",
                 )
                 st.text_input(
@@ -605,6 +614,7 @@ def fe_show():
         cat_operation = st.selectbox(
             label="Select Operation",
             options=sorted(["Combine", "Delete", "Encoding"]),
+            index = 0,
             key="feature_engineering_operation_cat",
         )
         if cat_operation != "Combine":
@@ -647,11 +657,13 @@ def fe_show():
             st.selectbox(
                 label="Select First Column",
                 options=categorical_columns,
+                index = 0,
                 key="cat_column1",
             )
             st.selectbox(
                 label="Select Second Column",
                 options=categorical_columns,
+                index = 0,
                 key="cat_column2",
             )
             st.text_input(
@@ -680,11 +692,13 @@ def fe_show():
         st.selectbox(
             label="Select Column",
             options=datetime_columns,
+            index = 0,
             key="dt_column",
         )
         operation = st.selectbox(
             label="Select Operation",
             options=["Delete", "Extracting Individual Date Components"],
+            index = 0,
             key="feature_engineering_dt_encoding_technique",
         )
         if operation == "Extracting Individual Date Components":
