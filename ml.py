@@ -161,6 +161,35 @@ def ml_show():
                                 )
 
                             models_metrics_information["Linear Regression"] = r2 * 100
+
+                    elif model == 'Logistic Regression':
+                        with st.container(border = True):
+                            st.markdown("# Logistic Regression", text_alignment = 'center')
+                            st.markdown(f'### Status -> {st.session_state.get('logistic_regression_training_status', 'Not Trained ❎')}', text_alignment = 'center')
+
+                            accuracy, precision, recall, f1 = LinearRegressionShow()
+                            
+                            col1, col2, col3, col4 = st.columns(4, border = True)
+                            with col1:
+                                st.metric(
+                                    label = 'Accuracy',
+                                    value = f'{accuracy : .3f}'
+                                )
+                            with col2:
+                                st.metric(
+                                    label = 'Precision',
+                                    value = f'{precision : .3f}'
+                                )
+                            with col3:
+                                st.metric(
+                                    label = 'Recall',
+                                    value = f'{recall : .3f}'
+                                )
+                            with col4:
+                                st.metric(
+                                    label = 'F1-Score',
+                                    value = f'{f1 : .3f} %'
+                                )
                     
     except ValueError as err:
         st.error(err)
