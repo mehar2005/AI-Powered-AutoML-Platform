@@ -1,7 +1,13 @@
 import streamlit as st
+import pandas as pd
 from datetime import datetime
+
+if 'file_uploaded' not in st.session_state:
+    st.session_state.file_uploaded = pd.DataFrame({})
+
 import file_uploaderOverviewCleaning as file_uploaderOverviewCleaning
 from eda import eda_show
+from feature_engineering import fe_show
 
 st.set_page_config(
     page_title = "AI Powered AutoML Platform",
@@ -26,3 +32,5 @@ st.divider()
 eda_show()
 
 st.title('Isto Agge Rabb Bharose 🙏', text_alignment = 'center')
+
+fe_show()
