@@ -8,6 +8,7 @@ if 'file_uploaded' not in st.session_state:
 import file_uploaderOverviewCleaning as file_uploaderOverviewCleaning
 from eda import eda_show
 from feature_engineering import fe_show
+from ml import ml_show
 
 st.set_page_config(
     page_title = "AI Powered AutoML Platform",
@@ -34,3 +35,7 @@ eda_show()
 st.title('Isto Agge Rabb Bharose 🙏', text_alignment = 'center')
 
 fe_show()
+
+st.divider()
+
+ml_show()
