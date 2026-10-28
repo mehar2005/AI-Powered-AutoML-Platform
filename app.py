@@ -5,7 +5,7 @@ from datetime import datetime
 if 'file_uploaded' not in st.session_state:
     st.session_state.file_uploaded = pd.DataFrame({})
 
-import file_uploaderOverviewCleaning as file_uploaderOverviewCleaning
+from file_uploaderOverviewCleaning import file_uploader_show
 from eda import eda_show
 from feature_engineering import fe_show
 from ml import ml_show
@@ -26,7 +26,7 @@ with col2:
 
 st.divider()
 
-file = file_uploaderOverviewCleaning.file_uploader_show()
+file_uploader_show()
 
 st.divider()
 

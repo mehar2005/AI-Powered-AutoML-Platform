@@ -18,54 +18,66 @@ DT_OPERATIONS = {
 }
 
 def _get_numeric_columns(data):
-    return sorted(
-        data.select_dtypes(include=["number"]).columns.tolist(),
-        key=str,
-    )
+    try:
+        return sorted(
+            data.select_dtypes(include=["number"]).columns.tolist(),
+            key=str,
+        )
+    except Exception as e:
+        st.session_state.get_num_col_exception = str(e)
 
 def _get_categoric_columns(data):
-    return sorted(
-        data.select_dtypes(include=["object", "string", "category"]).columns.tolist(),
-        key=str,
-    )
+    try:
+        return sorted(
+            data.select_dtypes(include=["object", "string", "category"]).columns.tolist(),
+            key=str,
+        )
+    except Exception as e:
+        st.session_state.get_cat_col_exception = str(e)
 
 def _get_datetime_columns(data):
-    return sorted(
-        [col for col in data.columns if pd.api.types.is_datetime64_any_dtype(data[col])],
-        key=str,
-    )
+    try:
+        return sorted(
+            [col for col in data.columns if pd.api.types.is_datetime64_any_dtype(data[col])],
+            key=str,
+        )
+    except Exception as e:
+        st.session_state.get_dt_col_exception = str(e)
 
 def _get_data_or_raise():
-    data = st.session_state.get("file_uploaded")
-    if not isinstance(data, pd.DataFrame) or data.empty:
-        raise ValueError("Upload a valid, non-empty dataset first.")
-    return data
+        data = st.session_state.get("file_uploaded")
+        if not isinstance(data, pd.DataFrame) or data.empty:
+            raise ValueError("Upload a valid, non-empty dataset first.")
+        return data
 
 def _require_column(data, column, label="selected"):
-    if column is None or column not in data.columns:
-        raise ValueError(f"The {label} column no longer exists. Please select it again.")
+        if column is None or column not in data.columns:
+            raise ValueError(f"The {label} column no longer exists. Please select it again.")
 
 def _clean_new_name(value):
-    return str(value or "").strip()
+    try:
+        return str(value or "").strip()
+    except Exception as e:
+        st.session_state.clean_new_name_exception = str(e)
 
 def _validate_new_name(data, name, *, allow_existing=False):
-    if not name:
-        raise ValueError("Enter a valid output column name.")
-    if not allow_existing and name in data.columns:
-        raise ValueError(
-            f"A column named '{name}' already exists. Choose a unique name."
-        )
+        if not name:
+            raise ValueError("Enter a valid output column name.")
+        if not allow_existing and name in data.columns:
+            raise ValueError(
+                f"A column named '{name}' already exists. Choose a unique name."
+            )
 
 def _parse_categories(raw_value, bins_num):
-    raw_value = str(raw_value or "")
-    categories = [item.strip() for item in raw_value.split("|")]
-    if len(categories) != bins_num or any(not item for item in categories):
-        raise ValueError(
-            "Enter exactly one non-empty category label for each bin, separated by |."
-        )
-    if len(set(categories)) != len(categories):
-        raise ValueError("Category labels must be unique.")
-    return categories
+        raw_value = str(raw_value or "")
+        categories = [item.strip() for item in raw_value.split("|")]
+        if len(categories) != bins_num or any(not item for item in categories):
+            raise ValueError(
+                "Enter exactly one non-empty category label for each bin, separated by |."
+            )
+        if len(set(categories)) != len(categories):
+            raise ValueError("Category labels must be unique.")
+        return categories
 
 def _parse_boundaries(raw_value, bins_num, series):
     try:
@@ -291,9 +303,6 @@ def apply_encoding():
             updated_data = pd.get_dummies(
                 updated_data, columns=[column], dtype=int, dummy_na=False
             )
-            for col in updated_data.columns:
-                if col in data.columns:
-                    raise ValueError("Columns with same name already present in the dataframe.")
         elif technique == "Label Encoding":
             non_missing = series.notna()
             encoder = LabelEncoder()

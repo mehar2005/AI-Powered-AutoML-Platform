@@ -24,6 +24,7 @@ def LogisticRegressionShow():
             y,
             test_size = test_ratio_num or custom_test_ratio,
             shuffle = True,
+            stratify = y if st.session_state.get('if_stratify_needed') else None,
             random_state = 42
         )
         
@@ -41,4 +42,5 @@ def LogisticRegressionShow():
         return accuracy, precision, recall, f1
 
     except Exception as e:
-        st.error(e)
+        st.session_state.logistic_regression_exception = str(e)
+        return None, None, None, None

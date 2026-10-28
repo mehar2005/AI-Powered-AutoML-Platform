@@ -41,4 +41,5 @@ def LinearRegressionShow():
         return mae, mse, rmse, r2
 
     except Exception as e:
-        st.error(e)
+        st.session_state.linear_regression_exception = str(e)
+        return None, None, None, None
