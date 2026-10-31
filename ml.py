@@ -33,6 +33,41 @@ ml_models = {
     ]
 }
 
+def apply_scaling():
+    try:
+        data = st.session_state.get('model_df')
+
+        if data is None or not isinstance(data, pd.DataFrame):
+            raise ValueError("Please upload a dataset first!")
+
+        if_cat_col_in_model_df = []
+
+        for col in data.columns:
+            if pd.api.types.is_object_dtype(data[col]):
+                if_cat_col_in_model_df.append(col)
+
+        if len(if_cat_col_in_model_df) > 0:
+            raise ValueError("Dataset contains Categorical column(s). Encode them first!")
+
+        scaling_tech = st.session_state.get('scaling_technique')
+        target = st.session_state.get('target_variable')
+
+        X = data
+
+        if scaling_tech == 'Standardization':
+            scaler = StandardScaler()
+            X = scaler.fit_transform(X)
+
+        elif scaling_tech == 'Normalization':
+            scaler = MinMaxScaler()
+            X = scaler.fit_transform(X)
+
+        st.session_state.scaled_data = X
+        st.session_state.scaling_success_message = 'Scaling Applied Successfully!'
+
+    except (ValueError, TypeError, KeyError) as e:
+        st.session_state.scaling_exception = f'An Error Occurred during Scaling: {e}'
+
 def ml_show():
     try:
         st.title('Predictions', text_alignment = 'center')
@@ -118,9 +153,36 @@ def ml_show():
                 required_cols = st.session_state.get('cols_for_model')
 
                 if not required_cols or 'All' in required_cols:
-                    st.session_state.model_df = df
+                    st.session_state.model_df = df.drop(columns = [st.session_state.get('target_variable')]).copy()
                 else:
                     st.session_state.model_df = df[required_cols].copy()
+
+                col1, col2 = st.columns(2, border = True)
+
+                with col1:
+                    st.markdown("### Select Scaling Technique", text_alignment = 'center')
+                    st.selectbox(
+                        label = '',
+                        options = sorted(['Normalization', 'Standardization']),
+                        index = 0,
+                        key = 'scaling_technique'
+                    )
+                    st.button(
+                        label = "Apply Scaling",
+                        key = 'scaling_apply_bt',
+                        disabled = True if st.session_state.get('scaled_data') is not None else False,
+                        on_click = apply_scaling,
+                        type = 'primary'
+                        )
+
+                    if 'scaling_exception' in st.session_state:
+                        st.error(st.session_state.pop('scaling_exception'))
+                with col2:
+                    if st.session_state.get('scaled_data') is None:
+                        st.warning("Apply Scaling before training the model(s).")
+                    else:
+                        if 'scaling_success_message' in st.session_state:
+                            st.write(st.session_state.get('scaling_success_message'))
 
                 st.selectbox(
                     label = 'Select Training:Testing Data Ratio',
@@ -400,13 +462,15 @@ def ml_show():
                                             value = f'{f1 * 100 : .3f} %' if f1 is not None else 'N/A'
                                         )
 
-                                    conf_matrix_df = pd.DataFrame(
+                                    if confusion_matrix is not None:
+                                        conf_matrix_df = pd.DataFrame(
                                         confusion_matrix,
                                         index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
                                         columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
                                     )
 
-                                    class_report_df = pd.DataFrame(class_report).transpose()
+                                    if class_report is not None:
+                                        class_report_df = pd.DataFrame(class_report).transpose()
 
                                     with st.expander("View Other Metrics"):
                                         st.markdown("## Confusion Matrix")
@@ -451,13 +515,15 @@ def ml_show():
                                             value = f'{f1 * 100 : .3f} %' if f1 is not None else 'N/A'
                                         )
 
-                                    conf_matrix_df = pd.DataFrame(
+                                    if confusion_matrix is not None:
+                                        conf_matrix_df = pd.DataFrame(
                                         confusion_matrix,
                                         index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
                                         columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
                                     )
 
-                                    class_report_df = pd.DataFrame(class_report).transpose()
+                                    if class_report is not None:
+                                        class_report_df = pd.DataFrame(class_report).transpose()
 
                                     with st.expander("View Other Metrics"):
                                         st.markdown("## Confusion Matrix")
@@ -502,13 +568,15 @@ def ml_show():
                                             value = f'{f1 * 100 : .3f} %' if f1 is not None else 'N/A'
                                         )
 
-                                    conf_matrix_df = pd.DataFrame(
+                                    if confusion_matrix is not None:
+                                        conf_matrix_df = pd.DataFrame(
                                         confusion_matrix,
                                         index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
                                         columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
                                     )
 
-                                    class_report_df = pd.DataFrame(class_report).transpose()
+                                    if class_report is not None:
+                                        class_report_df = pd.DataFrame(class_report).transpose()
 
                                     with st.expander("View Other Metrics"):
                                         st.markdown("## Confusion Matrix")
