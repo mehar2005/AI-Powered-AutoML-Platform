@@ -5,6 +5,10 @@ from datetime import datetime
 if 'file_uploaded' not in st.session_state:
     st.session_state.file_uploaded = pd.DataFrame({})
 
+def reset_session():
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+
 from file_uploaderOverviewCleaning import file_uploader_show
 from eda import eda_show
 from feature_engineering import fe_show
@@ -39,3 +43,17 @@ fe_show()
 st.divider()
 
 ml_show()
+
+with st.container(border = True):
+    col1, col2 = st.columns([13, 0.5])
+    with col1:
+        st.subheader("Want to Reset Everything?")
+    with col2:
+        if st.button(
+            label = 'Reset', 
+            type = 'primary',
+            key = 'reset_session',
+            disabled = st.session_state.get('reset_session') is None
+            ):
+            reset_session()
+            st.rerun()
