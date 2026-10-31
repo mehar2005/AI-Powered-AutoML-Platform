@@ -68,6 +68,10 @@ def apply_scaling():
     except (ValueError, TypeError, KeyError) as e:
         st.session_state.scaling_exception = f'An Error Occurred during Scaling: {e}'
 
+def use_unscaled_data():
+    st.session_state.scaled_data = None
+    st.session_state.final_model_df = st.session_state.get('model_df')
+
 def ml_show():
     try:
         st.title('Predictions', text_alignment = 'center')
@@ -176,14 +180,11 @@ def ml_show():
                     )
 
                     if st.session_state.get('scaled_data') is not None:
-                        unscaling_bt = st.button(
+                        st.button(
                             label = 'Use Unscaled Data?',
-                            key = 'get_back_to_unscaled_data'
+                            key = 'get_back_to_unscaled_data',
+                            on_click = use_unscaled_data
                         )
-
-                        if unscaling_bt:
-                            st.session_state.scaled_data = None
-                            st.session_state.scaling_success_message = None
 
                     if st.session_state.get('scaled_data') is not None:
                         st.session_state.final_model_df = st.session_state.get('scaled_data')
@@ -195,6 +196,8 @@ def ml_show():
                 with col2:
                     if st.session_state.get('scaled_data') is None:
                         st.warning("Apply Scaling before training the model(s).")
+                    if 'unscaling_sucesss_message' in st.session_state:
+                        st.success(st.session_state.pop('unscaling_sucesss_message'))
                     else:
                         if 'scaling_success_message' in st.session_state:
                             st.write(st.session_state.get('scaling_success_message'))
