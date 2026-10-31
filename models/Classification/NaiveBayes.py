@@ -16,8 +16,8 @@ def NaiveBayesShow():
 
         target_var = st.session_state.get('target_variable')
         
-        y = df[target_var]
-        X = df.drop(columns = [target_var])
+        y = st.session_state.get('file_uploaded')[target_var].copy()
+        X = st.session_state.get('scaled_data')
         
         X_train, X_test, y_train, y_test = train_test_split(
             X,
@@ -44,5 +44,6 @@ def NaiveBayesShow():
         return accuracy, precision, recall, f1, conf_matrix, class_report 
 
     except Exception as e:
+        st.session_state.naive_bayes_training_status = 'Not Trained ✅'
         st.session_state.naive_bayes_exception = str(e)
         return None, None, None, None, None, None

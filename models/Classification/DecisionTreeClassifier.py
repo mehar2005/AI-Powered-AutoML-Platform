@@ -16,7 +16,7 @@ def DecisionTreeClassifierShow():
 
         target_var = st.session_state.get('target_variable')
         
-        y = st.session_state.file_uploaded[target_var]
+        y = st.session_state.get('file_uploaded')[target_var].copy()
         X = st.session_state.get('scaled_data')
 
         if X is None:
@@ -49,5 +49,6 @@ def DecisionTreeClassifierShow():
         return accuracy, precision, recall, f1, conf_matrix, class_report 
 
     except Exception as e:
+        st.session_state.decision_tree_classifier_training_status = 'Not Trained ✅'
         st.session_state.decision_tree_classifier_exception = str(e)
         return None, None, None, None, None, None
