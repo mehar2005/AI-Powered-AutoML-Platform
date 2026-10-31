@@ -573,7 +573,7 @@ def file_uploader_show():
                 )
                 col[4].metric(
                     label = "Approx. memory usage",
-                    value = f'{st.session_state.file_uploaded.memory_usage(deep = True).sum() / (1024**2) : .2f} MB'
+                    value = f'{st.session_state.file_uploaded.memory_usage(deep = True).sum() / (1024**2) : .3f} MB'
                 )
 
                 with st.expander("View Data Quality Recommendations"):

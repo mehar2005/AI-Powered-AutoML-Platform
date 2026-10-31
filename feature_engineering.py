@@ -448,7 +448,7 @@ def del_num_col():
 def fe_show():
     data = st.session_state.get("file_uploaded")
     if not isinstance(data, pd.DataFrame) or data.empty:
-        st.info("Upload a file to start feature engineering.")
+        st.warning("Upload a file to start feature engineering.")
         return
     numeric_columns = _get_numeric_columns(data)
     categorical_columns = _get_categoric_columns(data)
