@@ -244,11 +244,27 @@ def ml_show():
                     test_ratio_num = 0.20 if test_ratio_str == '80:20' else 0.30 if test_ratio_str == '70:30' else 0.25 if test_ratio_str == '75:25' else None
                     custom_test_ratio = st.session_state.get('custom_test_ratio')
 
-                    with st.container(border = True):
-                        st.markdown("## Train-Test Split Percentage", text_alignment = 'center')
-                        col = st.columns(8)
-                        col[3].metric(label = 'Training Data', value = 1 - (test_ratio_num or custom_test_ratio), format = 'percent')
-                        col[4].metric(label = 'Testing Data', value = (test_ratio_num or custom_test_ratio), format = 'percent')
+                    if st.session_state.get('problem_type') in ['Binary Classification', 'Multiclass Classification']:
+                        col1, col2 = st.columns(2, border = True)
+                        with col1:
+                            st.markdown("## Train-Test Split Percentage", text_alignment = 'center')
+                            col = st.columns(8)
+                            col[3].metric(label = 'Training Data', value = 1 - (test_ratio_num or custom_test_ratio), format = 'percent')
+                            col[4].metric(label = 'Testing Data', value = (test_ratio_num or custom_test_ratio), format = 'percent')
+                        with col2:
+                            st.markdown("## Target Variable Value Counts")
+                            vc = df[st.session_state.get('target_variable')].value_counts()
+                            vc_df = vc.reset_index()
+                            vc_df.columns = ['Class', 'Count']
+
+                            st.dataframe(vc_df, hide_index = True)
+
+                    elif st.session_state.get('problem_type') == 'Regression':
+                        with st.container(border = True):
+                            st.markdown("## Train-Test Split Percentage", text_alignment = 'center')
+                            col = st.columns(8)
+                            col[3].metric(label = 'Training Data', value = 1 - (test_ratio_num or custom_test_ratio), format = 'percent')
+                            col[4].metric(label = 'Testing Data', value = (test_ratio_num or custom_test_ratio), format = 'percent')
                     
                     for model in models:
                         if model == 'Linear Regression':
