@@ -45,7 +45,7 @@ st.divider()
 ml_show()
 
 with st.container(border = True):
-    col1, col2 = st.columns([13, 0.5])
+    col1, col2 = st.columns([13, 0.7])
     with col1:
         st.subheader("Want to Reset Everything?")
     with col2:
