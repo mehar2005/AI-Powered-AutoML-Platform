@@ -16,8 +16,8 @@ def LinearRegressionShow():
 
         target_var = st.session_state.get('target_variable')
 
-        y = df[target_var]
-        X = df.drop(columns = [target_var])
+        y = st.session_state.get('file_uploaded')[target_var].copy()
+        X = st.session_state.get('final_model_df').copy()
 
         X_train, X_test, y_train, y_test = train_test_split(
             X,
