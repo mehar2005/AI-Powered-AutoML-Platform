@@ -167,13 +167,28 @@ def ml_show():
                         index = 0,
                         key = 'scaling_technique'
                     )
-                    st.button(
+                    scaling_bt = st.button(
                         label = "Apply Scaling",
                         key = 'scaling_apply_bt',
-                        disabled = True if st.session_state.get('scaled_data') is not None else False,
+                        disabled = st.session_state.get('scaled_data') is not None,
                         on_click = apply_scaling,
                         type = 'primary'
+                    )
+
+                    if st.session_state.get('scaled_data') is not None:
+                        unscaling_bt = st.button(
+                            label = 'Use Unscaled Data?',
+                            key = 'get_back_to_unscaled_data'
                         )
+
+                        if unscaling_bt:
+                            st.session_state.scaled_data = None
+                            st.session_state.scaling_success_message = None
+
+                    if st.session_state.get('scaled_data') is not None:
+                        st.session_state.final_model_df = st.session_state.get('scaled_data')
+                    else:
+                        st.session_state.final_model_df = st.session_state.get('model_df')
 
                     if 'scaling_exception' in st.session_state:
                         st.error(st.session_state.pop('scaling_exception'))
