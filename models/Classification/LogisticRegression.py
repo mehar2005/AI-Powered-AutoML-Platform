@@ -19,9 +19,9 @@ def LogisticRegressionShow():
         y = st.session_state.get('file_uploaded')[target_var].copy()
         scaled_data = st.session_state.get('scaled_data') 
         if scaled_data is not None:
-            X = scaled_data
+            X = scaled_data.copy()
         else:
-            st.session_state.get('model_df')
+            X = st.session_state.get('model_df').copy()
         
         X_train, X_test, y_train, y_test = train_test_split(
             X,
