@@ -17,11 +17,7 @@ def DecisionTreeClassifierShow():
         target_var = st.session_state.get('target_variable')
         
         y = st.session_state.get('file_uploaded')[target_var].copy()
-        scaled_data = st.session_state.get('scaled_data') 
-        if scaled_data is not None:
-            X = scaled_data.copy()
-        else:
-            X = st.session_state.get('model_df').copy()
+        X = st.session_state.get('final_model_df').copy()
 
         if X is None:
             X = df.drop(columns = [target_var])
