@@ -9,9 +9,7 @@ def KNNClassificationShow():
         test_ratio_str = st.session_state.get('train_test_ratio')
         test_ratio_num = 0.20 if test_ratio_str == '80:20' else 0.30 if test_ratio_str == '70:30' else 0.25 if test_ratio_str == '75:25' else None
         custom_test_ratio = st.session_state.get('custom_test_ratio')
-        df = st.session_state.get('scaled_data').copy()
-        if df is None:
-            df = st.session_state.get('model_df').copy()
+        df = st.session_state.get('model_df').copy()
 
         if not isinstance(df, pd.DataFrame):
             raise ValueError("Upload a Dataset First!")
