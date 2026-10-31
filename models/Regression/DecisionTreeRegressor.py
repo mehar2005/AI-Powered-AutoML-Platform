@@ -27,7 +27,9 @@ def DecisionTreeRegressorShow():
             random_state = 42
         )
 
-        model = DecisionTreeRegressor()
+        model = DecisionTreeRegressor(
+            random_state = 42
+        )
 
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
