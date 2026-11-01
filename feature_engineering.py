@@ -312,6 +312,9 @@ def apply_encoding():
                     series.loc[non_missing].astype(str)
                 )
             updated_data[column] = encoded
+        elif technique == "Frequency Encoding":
+            frequency = series.value_counts(normalize = True)
+            updated_data[column] = series.map(frequency)
         elif technique == "Ordinal Encoding":
             raw_categories = str(
                 st.session_state.get("cat_col_ordinal_encoding_categories") or ""
@@ -636,7 +639,7 @@ def fe_show():
             if cat_operation == "Encoding":
                 technique = st.selectbox(
                     label="Select Encoding Technique",
-                    options=sorted(["Label Encoding", "One-Hot Encoding", "Ordinal Encoding"]),
+                    options=sorted(["Label Encoding", "One-Hot Encoding", "Ordinal Encoding", "Frequency Encoding"]),
                     index = 0,
                     key="feature_engineering_cat_encoding_technique",
                 )
