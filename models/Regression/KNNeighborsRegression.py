@@ -30,16 +30,36 @@ def KNNRegressionShow():
         model = KNeighborsRegressor()
 
         model.fit(X_train, y_train)
+        y_train_pred = model.predict(X_train)
         y_pred = model.predict(X_test)
 
-        mae = mean_absolute_error(y_test, y_pred)
-        mse = mean_squared_error(y_test, y_pred)
-        rmse = root_mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
+        train_mae = mean_absolute_error(y_train, y_train_pred)
+        train_mse = mean_squared_error(y_train, y_train_pred)
+        train_rmse = root_mean_squared_error(y_train, y_train_pred)
+        train_r2 = r2_score(y_train, y_train_pred)
+
+        test_mae = mean_absolute_error(y_test, y_pred)
+        test_mse = mean_squared_error(y_test, y_pred)
+        test_rmse = root_mean_squared_error(y_test, y_pred)
+        test_r2 = r2_score(y_test, y_pred)
+
+        train_metrics = {
+            'mae' : train_mae,
+            'mse' : train_mse,
+            'rmse' : train_rmse,
+            'r2' : train_r2
+        }
+
+        test_metrics = {
+            'mae' : test_mae,
+            'mse' : test_mse,
+            'rmse' : test_rmse,
+            'r2' : test_r2
+        }
 
         st.session_state.knn_regression_training_status = 'Trained ✅'
-        return mae, mse, rmse, r2
+        return train_metrics, test_metrics
 
     except Exception as e:
         st.session_state.knn_regression_exception = str(e)
-        return None, None, None, None
+        return None, None
