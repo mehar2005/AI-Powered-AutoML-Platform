@@ -30,19 +30,25 @@ with col2:
 
 st.divider()
 
-file_uploader_show()
+file, eda, fe, ml = st.tabs(['File Upload & Data Cleaning', "Exploratory Data Analysis", 'Feature Engineering', "Machine Learning"])
+
+with file:
+    file_uploader_show()
 
 st.divider()
 
-eda_show()
+with eda:
+    eda_show()
 
 st.title('Isto Agge Rabb Bharose 🙏', text_alignment = 'center')
 
-fe_show()
+with fe:
+    fe_show()
 
 st.divider()
 
-ml_show()
+with ml:
+    ml_show()
 
 with st.container(border = True):
     col1, col2 = st.columns([13, 0.7])
