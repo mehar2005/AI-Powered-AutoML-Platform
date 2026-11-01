@@ -35,10 +35,10 @@ def LogisticRegressionShow():
         y_train_pred = model.predict(X_train)
         y_pred = model.predict(X_test)
 
-        train_accuracy = accuracy_score(y_test, y_train_pred)
-        train_precision = precision_score(y_test, y_train_pred, average = 'weighted', zero_division = 0)
-        train_recall = recall_score(y_test, y_train_pred, average = 'weighted', zero_division = 0)
-        train_f1 = f1_score(y_test, y_train_pred, average = 'weighted', zero_division = 0)
+        train_accuracy = accuracy_score(y_train, y_train_pred)
+        train_precision = precision_score(y_train, y_train_pred, average = 'weighted', zero_division = 0)
+        train_recall = recall_score(y_train, y_train_pred, average = 'weighted', zero_division = 0)
+        train_f1 = f1_score(y_train, y_train_pred, average = 'weighted', zero_division = 0)
 
         test_accuracy = accuracy_score(y_test, y_pred)
         test_precision = precision_score(y_test, y_pred, average = 'weighted', zero_division = 0)
