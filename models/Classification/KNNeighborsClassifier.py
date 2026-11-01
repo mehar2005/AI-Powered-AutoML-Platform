@@ -32,20 +32,42 @@ def KNNClassificationShow():
             n_neighbors = 5
         )
         model.fit(X_train, y_train)
+        y_train_pred = model.predict(X_train)
         y_pred = model.predict(X_test)
 
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred, average = 'weighted', zero_division = 0)
-        recall = recall_score(y_test, y_pred, average = 'weighted', zero_division = 0)
-        f1 = f1_score(y_test, y_pred, average = 'weighted', zero_division = 0)
+        train_accuracy = accuracy_score(y_test, y_train_pred)
+        train_precision = precision_score(y_test, y_train_pred, average = 'weighted', zero_division = 0)
+        train_recall = recall_score(y_test, y_train_pred, average = 'weighted', zero_division = 0)
+        train_f1 = f1_score(y_test, y_train_pred, average = 'weighted', zero_division = 0)
+
+        test_accuracy = accuracy_score(y_test, y_pred)
+        test_precision = precision_score(y_test, y_pred, average = 'weighted', zero_division = 0)
+        test_recall = recall_score(y_test, y_pred, average = 'weighted', zero_division = 0)
+        test_f1 = f1_score(y_test, y_pred, average = 'weighted', zero_division = 0)
+
+        conf_matrix = confusion_matrix(y_test, y_pred)
+        class_report = classification_report(y_test, y_pred, output_dict = True)
+
+        train_metrics = {
+            'accuracy' : train_accuracy,
+            'precision' : train_precision,
+            'recall' : train_recall,
+            'f1' : train_f1
+        }
+        test_metrics = {
+            'accuracy' : test_accuracy,
+            'precision' : test_precision,
+            'recall' : test_recall,
+            'f1' : test_f1
+        }
         conf_matrix = confusion_matrix(y_test, y_pred)
         class_report = classification_report(y_test, y_pred, output_dict = True)
 
         st.session_state.knn_classification_training_status = 'Trained ✅'
 
-        return accuracy, precision, recall, f1, conf_matrix, class_report 
+        return train_metrics, test_metrics, conf_matrix, class_report 
 
     except Exception as e:
         st.session_state.knn_classification_training_status = 'Not Trained ✅'
         st.session_state.knn_classification_exception = str(e)
-        return None, None, None, None, None, None
+        return None, None, None, None
