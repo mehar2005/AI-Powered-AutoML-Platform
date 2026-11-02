@@ -27,8 +27,10 @@ def DecisionTreeRegressorShow():
             random_state = 42
         )
 
+        best_params = st.session_state.get('best_dtr_params') or {}
         model = DecisionTreeRegressor(
-            random_state = 42
+            random_state = 42,
+            **best_params
         )
 
         model.fit(X_train, y_train)

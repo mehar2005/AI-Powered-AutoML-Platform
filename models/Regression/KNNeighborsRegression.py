@@ -27,7 +27,8 @@ def KNNRegressionShow():
             random_state = 42
         )
 
-        model = KNeighborsRegressor()
+        best_params = st.session_state.get('best_knnr_params') or {}
+        model = KNeighborsRegressor(**best_params)
 
         model.fit(X_train, y_train)
         y_train_pred = model.predict(X_train)

@@ -27,7 +27,8 @@ def LinearRegressionShow():
             random_state = 42
         )
 
-        model = LinearRegression()
+        best_params = st.session_state.get('best_lnr_params') or {}
+        model = LinearRegression(**best_params)
 
         model.fit(X_train, y_train)
         y_train_pred = model.predict(X_train)
