@@ -4,6 +4,8 @@ from datetime import datetime
 
 if 'file_uploaded' not in st.session_state:
     st.session_state.file_uploaded = pd.DataFrame({})
+if 'time_updated' not in st.session_state:
+    st.session_state.time_updated = datetime.today().strftime("%I:%M:%S %p")
 
 def reset_session():
     for key in list(st.session_state.keys()):
@@ -26,7 +28,7 @@ col1, col2 = st.columns([0.85, 0.15])
 with col1:
     st.subheader("Bridging the Gap Between Data and Machine Learning", text_alignment = 'center')
 with col2:
-    st.caption(f"Last Updated: {datetime.today().strftime("%I:%M:%S %p")}")
+    st.caption(f"Last Updated: {st.session_state.get('time_updated')}")
 
 st.divider()
 
@@ -39,8 +41,6 @@ st.divider()
 
 with eda:
     eda_show()
-
-st.title('Isto Agge Rabb Bharose 🙏', text_alignment = 'center')
 
 with fe:
     fe_show()
