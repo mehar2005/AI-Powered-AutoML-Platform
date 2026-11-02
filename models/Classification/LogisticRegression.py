@@ -28,9 +28,12 @@ def LogisticRegressionShow():
             random_state = 42
         )
         
+        best_params = st.session_state.get('best_lgr_params') or {}
+
         model = LogisticRegression(
-            class_weight = 'balanced' if st.session_state.get('if_class_weights_imbalanced') else None
+            **best_params
         )
+
         model.fit(X_train, y_train)
         y_train_pred = model.predict(X_train)
         y_pred = model.predict(X_test)

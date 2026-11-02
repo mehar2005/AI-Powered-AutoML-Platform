@@ -28,8 +28,10 @@ def KNNClassificationShow():
             random_state = 42
         )
         
+        best_params = st.session_state.get('best_knnc_params') or {}
+
         model = KNeighborsClassifier(
-            n_neighbors = 5
+            **best_params
         )
         model.fit(X_train, y_train)
         y_train_pred = model.predict(X_train)

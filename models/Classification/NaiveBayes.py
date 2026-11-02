@@ -28,7 +28,12 @@ def NaiveBayesShow():
             random_state = 42
         )
         
-        model = GaussianNB()
+        best_params = st.session_state.get('best_nb_params') or {}
+
+        model = GaussianNB(
+            **best_params
+        )
+
         model.fit(X_train, y_train)
         y_train_pred = model.predict(X_train)
         y_pred = model.predict(X_test)

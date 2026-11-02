@@ -31,8 +31,11 @@ def DecisionTreeClassifierShow():
             random_state = 42
         )
         
+        best_params = st.session_state.get('best_dtc_params') or {}
+
         model = DecisionTreeClassifier(
-            random_state = 42
+            random_state=42,
+            **best_params
         )
         model.fit(X_train, y_train)
         y_train_pred = model.predict(X_train)
