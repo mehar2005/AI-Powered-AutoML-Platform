@@ -3,358 +3,379 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-def eda_show():
-    st.title('Exploratory Data Analysis', text_alignment = 'center')
-    univariate, bivariate, multivariate = st.tabs(['Univariate Analysis', 'Bivariate Analysis', 'Multivariate Analysis'])
+@st.cache_data
+def get_value_counts(df, column):
+    return df[column].value_counts(dropna = False)
 
-    df = st.session_state.file_uploaded
-    num_col = sorted(st.session_state.file_uploaded.select_dtypes(
-        include = 'number'
-    ).columns.tolist())
-    cat_col = sorted(st.session_state.file_uploaded.select_dtypes(
-        include = ['object', 'string', 'category']
-    ).columns.tolist())
-    bool_col = sorted(st.session_state.file_uploaded.select_dtypes(
-        include = ['boolean', 'bool']
-    ).columns.tolist())
-    dt_col = sorted(list([col for col in st.session_state.file_uploaded.columns if pd.api.types.is_datetime64_any_dtype(df[col])]))
-    for key in list(st.session_state.keys()):
-        value = st.session_state.get(key)
-        if 'col' in key.lower() and 'type' not in key.lower() and 'selected' not in key.lower() and isinstance(value, str) and value not in df.columns:
-            del st.session_state[key]
-        elif 'selected' in key.lower() and isinstance(value, bool):
-            st.session_state[key] = False
 
-    with univariate:
-        try:
-            with st.container():
-                col1, col2 = st.columns(2, border = True)
+@st.cache_data
+def get_crosstab(df, first_col, second_col, normalize = False):
+    return pd.crosstab(
+        df[first_col],
+        df[second_col],
+        normalize = normalize
+    )
 
-                with col1:
-                    column_type = st.selectbox(
-                        label = 'Select Column Type',
-                        options = sorted(['Numerical', 'Categorical', 'Boolean']),
-                        index = 0,
-                        key = 'univariate_chart_column_type'
-                    )
 
-                    if st.session_state.get('univariate_chart_column_type') == 'Numerical':
-                        if st.session_state.file_uploaded.select_dtypes(include = ['number']).columns.tolist() == []:
-                            st.warning('No Columns found!')
-                        else:
-                            chart_type = st.selectbox(
-                                label = 'Select Chart Type',
-                                options = sorted(['Histogram', 'Box Plot', 'Violin Plot']),
-                                index = 0,
-                                key = 'univariate_chart_type_numerical'
-                            )
+@st.cache_data
+def get_grouped_values(df, category_col, numeric_col, aggregation):
+    aggregation_map = {
+        'Mean': 'mean',
+        'Median': 'median',
+        'Sum': 'sum',
+        'Count': 'count'
+    }
 
-                            if st.session_state.get('univariate_chart_type_numerical') in ['Histogram']:
-                                column = st.selectbox(
-                                    label = 'Select Column',
-                                    options = num_col,
+    return (
+        df.groupby(category_col, observed = True)[numeric_col]
+        .agg(aggregation_map[aggregation])
+        .reset_index()
+    )
+
+
+@st.cache_data
+def get_correlation(df, selected_cols, method):
+    return df[list(selected_cols)].corr(method = method)
+
+
+@st.cache_data
+def get_pivot_table(df, row_col, column_col, value_col, aggregation):
+    aggregation_map = {
+        'Sum': 'sum',
+        'Mean': 'mean',
+        'Median': 'median',
+        'Count': 'count'
+    }
+
+    return df.pivot_table(
+        index = row_col,
+        columns = column_col,
+        values = value_col,
+        aggfunc = aggregation_map[aggregation],
+        fill_value = 0
+    )
+
+@st.fragment
+def univariate_analysis(cat_col, num_col, bool_col):
+            try:
+                df = st.session_state.get('file_uploaded')
+                if not isinstance(df, pd.DataFrame):
+                    raise ValueError("Upload a Dataset First!")
+                with st.container():
+                    col1, col2 = st.columns(2, border = True)
+    
+                    with col1:
+                        column_type = st.selectbox(
+                            label = 'Select Column Type',
+                            options = sorted(['Numerical', 'Categorical', 'Boolean']),
+                            index = 0,
+                            key = 'univariate_chart_column_type'
+                        )
+    
+                        if st.session_state.get('univariate_chart_column_type') == 'Numerical':
+                            if len(num_col) == 0:
+                                st.warning('No Columns found!')
+                            else:
+                                chart_type = st.selectbox(
+                                    label = 'Select Chart Type',
+                                    options = sorted(['Histogram', 'Box Plot', 'Violin Plot']),
                                     index = 0,
-                                    key = 'univariate_chart_column_numerical'
+                                    key = 'univariate_chart_type_numerical'
                                 )
-                                if st.session_state.univariate_chart_column_numerical:
-                                    st.session_state.univariate_hist_col_selected = True
-                                nbins = st.number_input(
-                                    label = 'Enter number of bins',
-                                    min_value = 1,
-                                    max_value = max(1, len(df[st.session_state.univariate_chart_column_numerical])),
-                                    value = max(1, min(
-                                        int(len(df[st.session_state.univariate_chart_column_numerical]) ** 0.5),
-                                        len(df[st.session_state.univariate_chart_column_numerical])
-                                    )),
-                                    step = 1,
-                                    key = 'histogram_number_bins'
-                                )
-                                cumulative = st.checkbox(
-                                    label = 'Cumulative?',
-                                    key = 'cumulative_need_histogram'
-                                )
-                            elif st.session_state.get('univariate_chart_type_numerical') in ['Box Plot']:
-                                column = st.selectbox(
-                                    label = 'Select Column',
-                                    options = num_col,
-                                    index = 0,
-                                    key = 'univariate_chart_column_numerical'
-                                )
-                                if st.session_state.univariate_chart_column_numerical:
-                                    st.session_state.univariate_boxplot_col_selected = True
-                                mean_line = st.checkbox(
-                                    label = 'Mean Line Needed?',
-                                    key = 'mean_line_boxplot_need'
-                                )
-                                notched = st.checkbox(
-                                    label = 'Notched?',
-                                    key = 'notched_boxplot_need'
-                                )
-                            elif st.session_state.get('univariate_chart_type_numerical') in ['Violin Plot']:
-                                column = st.selectbox(
-                                    label = 'Select Column',
-                                    options = num_col,
-                                    index = 0,
-                                    key = 'univariate_chart_column_numerical'
-                                )
-                                if st.session_state.univariate_chart_column_numerical:
-                                    st.session_state.univariate_violinplot_col_selected = True
-                                mean_line = st.checkbox(
-                                    label = 'Mean Line Needed?',
-                                    key = 'mean_line_violin_need'
-                                )
-                                box_needed = st.checkbox(
-                                    label = 'Box Needed?',
-                                    key = 'box_violin_needed'
-                                )
+    
+                                if st.session_state.get('univariate_chart_type_numerical') in ['Histogram']:
+                                    column = st.selectbox(
+                                        label = 'Select Column',
+                                        options = num_col,
+                                        index = 0,
+                                        key = 'univariate_chart_column_numerical'
+                                    )
+                                    nbins = st.number_input(
+                                        label = 'Enter number of bins',
+                                        min_value = 1,
+                                        max_value = max(1, len(df[column])),
+                                        value = max(1, min(int(len(df[column]) ** 0.5), len(df[column]))),
+                                        step = 1,
+                                        key = 'histogram_number_bins'
+                                    )
+                                    cumulative = st.checkbox(
+                                        label = 'Cumulative?',
+                                        key = 'cumulative_need_histogram'
+                                    )
+                                elif st.session_state.get('univariate_chart_type_numerical') in ['Box Plot']:
+                                    column = st.selectbox(
+                                        label = 'Select Column',
+                                        options = num_col,
+                                        index = 0,
+                                        key = 'univariate_chart_column_numerical'
+                                    )
+                                    mean_line = st.checkbox(
+                                        label = 'Mean Line Needed?',
+                                        key = 'mean_line_boxplot_need'
+                                    )
+                                    notched = st.checkbox(
+                                        label = 'Notched?',
+                                        key = 'notched_boxplot_need'
+                                    )
+                                elif st.session_state.get('univariate_chart_type_numerical') in ['Violin Plot']:
+                                    column = st.selectbox(
+                                        label = 'Select Column',
+                                        options = num_col,
+                                        index = 0,
+                                        key = 'univariate_chart_column_numerical'
+                                    )
+                                    mean_line = st.checkbox(
+                                        label = 'Mean Line Needed?',
+                                        key = 'mean_line_violin_need'
+                                    )
+                                    box_needed = st.checkbox(
+                                        label = 'Box Needed?',
+                                        key = 'box_violin_needed'
+                                    )
+    
+                                with col2:
+                                        col_for_chart_numerical = st.session_state.get('univariate_chart_column_numerical')
+                                        chart_type = st.session_state.get('univariate_chart_type_numerical')
 
-                            with col2:
-                                col_for_chart_numerical = st.session_state.univariate_chart_column_numerical
-                                fig = go.Figure()
+                                        if col_for_chart_numerical not in num_col:
+                                            raise ValueError('Select a valid numerical column first!')
 
-                                if st.session_state.get('univariate_chart_type_numerical') == 'Histogram':
-                                    if st.session_state.get('univariate_hist_col_selected') == True:
-                                        fig.add_traces(
-                                            go.Histogram(
-                                                x = df[col_for_chart_numerical],
-                                                text = df[col_for_chart_numerical],
-                                                name = col_for_chart_numerical,
-                                                opacity = 0.8,
-                                                nbinsx = st.session_state.histogram_number_bins,
-                                                cumulative = dict(enabled = st.session_state.get('cumulative_need_histogram'))
+                                        elif chart_type == 'Histogram':
+                                            fig = go.Figure()
+
+                                            fig.add_trace(
+                                                go.Histogram(
+                                                    x = df[col_for_chart_numerical],
+                                                    name = col_for_chart_numerical,
+                                                    opacity = 0.8,
+                                                    nbinsx = st.session_state.get('histogram_number_bins', 10),
+                                                    cumulative = dict(enabled = st.session_state.get('cumulative_need_histogram', False))
                                                 )
                                             )
-                                        fig.update_layout(
-                                            title = col_for_chart_numerical + ' Distribution',
-                                            showlegend = True,
-                                            template = 'seaborn'
-                                        )
-                                        st.plotly_chart(fig, width = 'stretch')
-                                    else:
-                                        st.warning('Select Columns first!')
-                                elif st.session_state.get('univariate_chart_type_numerical') == 'Box Plot':
-                                    if st.session_state.get('univariate_boxplot_col_selected') == True:
-                                        fig.add_traces(
-                                            go.Box(
-                                                y = df[col_for_chart_numerical],
-                                                name = col_for_chart_numerical,
-                                                boxmean = st.session_state.get('mean_line_boxplot_need'),
-                                                opacity = 0.8,
-                                                quartilemethod = 'linear',
-                                                notched = st.session_state.get('notched_boxplot_need'),
-                                                text = df[col_for_chart_numerical]
+
+                                            fig.update_layout(
+                                                title = f'{col_for_chart_numerical} Distribution',
+                                                showlegend = True,
+                                                template = 'seaborn'
                                             )
-                                        )
-                                        fig.update_layout(
-                                            title = f'{col_for_chart_numerical} Box Plot',
-                                            yaxis_title=col_for_chart_numerical
-                                        )
-                                        st.plotly_chart(fig, width = 'stretch')
-                                    else:
-                                        st.warning('Select Columns first!')
-                                elif st.session_state.get('univariate_chart_type_numerical') == 'Violin Plot':
-                                    if st.session_state.get('univariate_violinplot_col_selected') == True:
-                                        fig.add_traces(
-                                            go.Violin(
-                                                y = df[col_for_chart_numerical],
-                                                name = col_for_chart_numerical,
-                                                opacity = 0.8,
-                                                box = dict(visible = st.session_state.get('box_violin_needed')),
-                                                meanline = dict(visible = st.session_state.get('mean_line_violin_need'))
-                                            )
-                                        )
-                                        fig.update_layout(
-                                            title = f'{col_for_chart_numerical} Violin Plot',
-                                            yaxis_title=col_for_chart_numerical,
-                                        )
-                                        st.plotly_chart(fig, width = 'stretch')
-                                    else:
-                                        st.warning('Select Columns first!')
 
-                    elif st.session_state.get('univariate_chart_column_type') == 'Categorical':
-                        if st.session_state.file_uploaded.select_dtypes(include = ['object', 'category', 'string']).columns.tolist() == []:
-                            st.warning('No Columns found!')
-                        else:
-                            chart_type = st.selectbox(
-                                label = 'Select Chart Type',
-                                options = sorted(['Bar Chart', 'Pie Chart']),
-                                index = 0,
-                                key = 'univariate_chart_type_categorical'
-                            )
+                                            st.plotly_chart(fig, width = 'stretch')
 
-                            if st.session_state.get('univariate_chart_type_categorical') in ['Bar Chart']:
-                                column = st.selectbox(
-                                    label = 'Select Column',
-                                    options = cat_col,
-                                    index = 0,
-                                    key = 'univariate_chart_column_categorical'
-                                )
-                                if st.session_state.univariate_chart_column_categorical:
-                                    st.session_state.univariate_bar_col_selected_cat = True
-                                    col_for_chart_categorical = st.session_state.univariate_chart_column_categorical
-                                    value_counts = df[col_for_chart_categorical].value_counts()
-                            elif st.session_state.get('univariate_chart_type_categorical') in ['Pie Chart']:
-                                column = st.selectbox(
-                                    label = 'Select Column',
-                                    options = cat_col,
-                                    index = 0,
-                                    key = 'univariate_chart_column_categorical'
-                                )
-                                if st.session_state.univariate_chart_column_categorical:
-                                    st.session_state.univariate_pie_col_selected_cat = True
-                                donut_need = st.checkbox(
-                                    label = 'Donut?',
-                                    key = 'categorical_donut_need_pie'
-                                )
-                                col_for_chart_categorical = st.session_state.univariate_chart_column_categorical
-                                value_counts = df[col_for_chart_categorical].value_counts()
+                                        elif chart_type == 'Box Plot':
+                                            fig = go.Figure()
 
-                            with col2:
-                                fig = go.Figure()
-
-                                if st.session_state.get('univariate_chart_type_categorical') == 'Bar Chart':
-                                    if st.session_state.get('univariate_bar_col_selected_cat') == True:
-                                        fig.add_traces(
-                                            go.Bar(
-                                                x = value_counts.index,
-                                                y = value_counts.values,
-                                                name = col_for_chart_categorical,
-                                                opacity = 0.8
-                                            )
-                                        )
-                                        fig.update_layout(
-                                            title = f'{col_for_chart_categorical} Categories',
-                                            xaxis_title = col_for_chart_categorical,
-                                            yaxis_title = 'Count'
-                                        )
-                                        st.plotly_chart(fig, width = 'stretch')
-                                    else:
-                                        st.warning('Select Columns first!')
-
-                                elif st.session_state.get('univariate_chart_type_categorical') == 'Pie Chart':
-                                    if st.session_state.get('univariate_pie_col_selected_cat') == True:
-                                        if st.session_state.get('categorical_donut_need_pie', False):
-                                            fig.add_traces(
-                                                go.Pie(
-                                                    labels = value_counts.index,
-                                                    values = value_counts.values,
-                                                    name = col_for_chart_categorical,
+                                            fig.add_trace(
+                                                go.Box(
+                                                    y = df[col_for_chart_numerical],
+                                                    name = col_for_chart_numerical,
+                                                    boxmean = st.session_state.get('mean_line_boxplot_need', False),
                                                     opacity = 0.8,
-                                                    hole = 0.5,
+                                                    quartilemethod = 'linear',
+                                                    notched = st.session_state.get('notched_boxplot_need', False)
+                                                )
+                                            )
+
+                                            fig.update_layout(
+                                                title = f'{col_for_chart_numerical} Box Plot',
+                                                yaxis_title = col_for_chart_numerical
+                                            )
+
+                                            st.plotly_chart(fig, width = 'stretch')
+
+                                        elif chart_type == 'Violin Plot':
+                                            fig = go.Figure()
+
+                                            fig.add_trace(
+                                                go.Violin(
+                                                    y = df[col_for_chart_numerical],
+                                                    name = col_for_chart_numerical,
+                                                    opacity = 0.8,
+                                                    box = dict(
+                                                        visible = st.session_state.get('box_violin_needed', False)
+                                                    ),
+                                                    meanline = dict(visible = st.session_state.get('mean_line_violin_need', False))
+                                                )
+                                            )
+
+                                            fig.update_layout(
+                                                title = f'{col_for_chart_numerical} Violin Plot',
+                                                yaxis_title = col_for_chart_numerical
+                                            )
+
+                                            st.plotly_chart(fig, width = 'stretch')
+
+                        elif st.session_state.get('univariate_chart_column_type') == 'Categorical':
+                            if len(cat_col) == 0:
+                                st.warning('No Columns found!')
+                            else:
+                                chart_type = st.selectbox(
+                                    label = 'Select Chart Type',
+                                    options = sorted(['Bar Chart', 'Pie Chart']),
+                                    index = 0,
+                                    key = 'univariate_chart_type_categorical'
+                                )
+    
+                                if st.session_state.get('univariate_chart_type_categorical') in ['Bar Chart']:
+                                    column = st.selectbox(
+                                        label = 'Select Column',
+                                        options = cat_col,
+                                        index = 0,
+                                        key = 'univariate_chart_column_categorical'
+                                    )
+                                    if st.session_state.univariate_chart_column_categorical:
+                                        selected_col = st.session_state.get('univariate_chart_column_categorical')
+                                elif st.session_state.get('univariate_chart_type_categorical') in ['Pie Chart']:
+                                    column = st.selectbox(
+                                        label = 'Select Column',
+                                        options = cat_col,
+                                        index = 0,
+                                        key = 'univariate_chart_column_categorical'
+                                    )
+                                    if st.session_state.univariate_chart_column_categorical:
+                                        selected_col = st.session_state.get('univariate_chart_column_categorical')
+
+                                        donut_need = st.checkbox(
+                                            label = 'Donut?',
+                                            key = 'categorical_donut_need_pie'
+                                        )
+
+    
+                                with col2:
+                                    if selected_col not in cat_col:
+                                        st.warning('Select a valid categorical column first!')
+
+                                    else:
+                                        value_counts = get_value_counts(df, selected_col)
+
+                                        if len(value_counts) > 20:
+                                            value_counts = value_counts.head(20)
+                                            st.info('Showing the top 20 categories.')
+
+                                        fig = go.Figure()
+
+                                        if st.session_state.get('univariate_chart_type_categorical') == 'Bar Chart':
+                                            fig.add_trace(
+                                                go.Bar(
+                                                    x = value_counts.index.astype(str),
+                                                    y = value_counts.values,
+                                                    name = selected_col,
+                                                    opacity = 0.8
+                                                )
+                                            )
+
+                                            fig.update_layout(
+                                                title = f'{selected_col} Categories',
+                                                xaxis_title = selected_col,
+                                                yaxis_title = 'Count'
+                                            )
+
+                                        elif st.session_state.get('univariate_chart_type_categorical') == 'Pie Chart':
+                                            fig.add_trace(
+                                                go.Pie(
+                                                    labels = value_counts.index.astype(str),
+                                                    values = value_counts.values,
+                                                    name = selected_col,
+                                                    opacity = 0.8,
+                                                    hole = 0.5 if donut_need else 0,
                                                     textinfo = 'label+percent'
                                                 )
                                             )
-                                        else:
-                                            fig.add_traces(
-                                                go.Pie(
-                                                    labels = value_counts.index,
-                                                    values = value_counts.values,
-                                                    name = col_for_chart_categorical,
-                                                    opacity = 0.8,
-                                                    textinfo = 'label+percent'
-                                                )
+
+                                            fig.update_layout(
+                                                title = f'{selected_col} Categories'
                                             )
-                                        fig.update_layout(
-                                            title = f'{col_for_chart_categorical} Categories'
-                                        )
+
                                         st.plotly_chart(fig, width = 'stretch')
-                                    else:
-                                        st.warning('Select Columns first!')
-
-                    elif st.session_state.get('univariate_chart_column_type') == 'Boolean':
-                        if st.session_state.file_uploaded.select_dtypes(include = ['boolean', 'bool']).columns.tolist() == []:
-                            st.warning('No Columns found!')
-                        else:
-                            chart_type = st.selectbox(
-                                label = 'Select Chart Type',
-                                options = sorted(['Bar Chart', 'Pie Chart']),
-                                index = 0,
-                                key = 'univariate_chart_type_boolean'
-                            )
-
-                            if st.session_state.get('univariate_chart_type_boolean') in ['Bar Chart']:
-                                column = st.selectbox(
-                                    label = 'Select Column',
-                                    options = bool_col,
+    
+                        elif st.session_state.get('univariate_chart_column_type') == 'Boolean':
+                            if len(bool_col) == 0:
+                                st.warning('No Columns found!')
+                            else:
+                                chart_type = st.selectbox(
+                                    label = 'Select Chart Type',
+                                    options = sorted(['Bar Chart', 'Pie Chart']),
                                     index = 0,
-                                    key = 'univariate_chart_column_boolean'
+                                    key = 'univariate_chart_type_boolean'
                                 )
-                                if st.session_state.univariate_chart_column_boolean:
-                                    st.session_state.univariate_bar_col_selected_bool = True
+    
+                                if st.session_state.get('univariate_chart_type_boolean') in ['Bar Chart']:
+                                    column = st.selectbox(
+                                        label = 'Select Column',
+                                        options = bool_col,
+                                        index = 0,
+                                        key = 'univariate_chart_column_boolean'
+                                    )
+                                    if st.session_state.univariate_chart_column_boolean:
+                                        st.session_state.univariate_bar_col_selected_bool = True
+                                        selected_col = st.session_state.get('univariate_chart_column_boolean')
+                                elif st.session_state.get('univariate_chart_type_boolean') in ['Pie Chart']:
+                                    column = st.selectbox(
+                                        label = 'Select Column',
+                                        options = bool_col,
+                                        index = 0,
+                                        key = 'univariate_chart_column_boolean'
+                                    )
+                                    if st.session_state.univariate_chart_column_boolean:
+                                        st.session_state.univariate_pie_col_selected_bool = True
+                                        selected_col = st.session_state.get('univariate_chart_column_boolean')
+                                    donut_need = st.checkbox(
+                                        label = 'Donut?',
+                                        key = 'donut_need_pie'
+                                    )
                                     col_for_chart_boolean = st.session_state.univariate_chart_column_boolean
                                     value_counts = df[col_for_chart_boolean].value_counts()
-                            elif st.session_state.get('univariate_chart_type_boolean') in ['Pie Chart']:
-                                column = st.selectbox(
-                                    label = 'Select Column',
-                                    options = bool_col,
-                                    index = 0,
-                                    key = 'univariate_chart_column_boolean'
-                                )
-                                if st.session_state.univariate_chart_column_boolean:
-                                    st.session_state.univariate_pie_col_selected_bool = True
-                                donut_need = st.checkbox(
-                                    label = 'Donut?',
-                                    key = 'donut_need_pie'
-                                )
-                                col_for_chart_boolean = st.session_state.univariate_chart_column_boolean
-                                value_counts = df[col_for_chart_boolean].value_counts()
+    
+                                with col2:
+                                    if selected_col not in bool_col:
+                                        st.warning('Select a valid Boolean column first!')
 
-                            with col2:
-                                fig = go.Figure()
-
-                                if st.session_state.get('univariate_chart_type_boolean') == 'Bar Chart':
-                                    if st.session_state.get('univariate_bar_col_selected_bool') == True:
-                                        fig.add_traces(
-                                            go.Bar(
-                                                x = value_counts.index,
-                                                y = value_counts.values,
-                                                name = col_for_chart_boolean,
-                                                opacity = 0.8
-                                            )
-                                        )
-                                        fig.update_layout(
-                                            title = f'{col_for_chart_boolean} Categories',
-                                            xaxis_title = col_for_chart_boolean,
-                                            yaxis_title = 'Count'
-                                        )
-                                        st.plotly_chart(fig, width = 'stretch')
                                     else:
-                                        st.warning('Select Columns first!')
+                                        value_counts = get_value_counts(df, selected_col)
 
-                                elif st.session_state.get('univariate_chart_type_boolean') == 'Pie Chart':
-                                    if st.session_state.get('univariate_pie_col_selected_bool') == True:
-                                        if st.session_state.get('donut_need_pie', False):
-                                            fig.add_traces(
+                                        fig = go.Figure()
+
+                                        if st.session_state.get('univariate_chart_type_boolean') == 'Bar Chart':
+                                            fig.add_trace(
+                                                go.Bar(
+                                                    x = value_counts.index.astype(str),
+                                                    y = value_counts.values,
+                                                    name = selected_col,
+                                                    opacity = 0.8
+                                                )
+                                            )
+
+                                            fig.update_layout(
+                                                title = f'{selected_col} Categories',
+                                                xaxis_title = selected_col,
+                                                yaxis_title = 'Count'
+                                            )
+
+                                        elif st.session_state.get('univariate_chart_type_boolean') == 'Pie Chart':
+                                            fig.add_trace(
                                                 go.Pie(
-                                                    labels = value_counts.index,
+                                                    labels = value_counts.index.astype(str),
                                                     values = value_counts.values,
-                                                    name = col_for_chart_boolean,
+                                                    name = selected_col,
                                                     opacity = 0.8,
-                                                    hole = 0.5,
+                                                    hole = 0.5 if donut_need else 0,
                                                     textinfo = 'label+percent'
                                                 )
                                             )
-                                        else:
-                                            fig.add_traces(
-                                                go.Pie(
-                                                    labels = value_counts.index,
-                                                    values = value_counts.values,
-                                                    name = col_for_chart_boolean,
-                                                    opacity = 0.8,
-                                                    textinfo = 'label+percent'
-                                                )
-                                            )
-                                        fig.update_layout(
-                                            title = f'{col_for_chart_boolean} Categories'
-                                        )
-                                        st.plotly_chart(fig, width = 'stretch')
-                                    else:
-                                        st.warning('Select Columns first!')
-        except Exception:
-            st.error("An Unknown error occured!")
 
-    with bivariate:
+                                            fig.update_layout(
+                                                title = f'{selected_col} Categories'
+                                            )
+
+                                        st.plotly_chart(fig, width = 'stretch')
+            except Exception as err:
+                st.exception(err)
+
+@st.fragment
+def bivariate_analysis(cat_col, num_col, dt_col, bool_col):
         try:
+            df = st.session_state.get('file_uploaded')
+            if not isinstance(df, pd.DataFrame):
+                raise ValueError("Upload a dataset first!")
             col1, col2 = st.columns(2, border = True)
 
             with col1:
@@ -388,72 +409,77 @@ def eda_show():
                                 index = 0,
                                 key = 'bivariate_nvn_second_col'
                             )
-                            if (st.session_state.bivariate_nvn_first_col) and (st.session_state.bivariate_nvn_second_col):
-                                st.session_state.bivariate_scatter_col_selected_nvn = True
 
                         with col2:
-                            fig = go.Figure()
-                            if st.session_state.get('bivariate_scatter_col_selected_nvn') == True:
-                                fig.add_traces(
+                            first_col = st.session_state.get('bivariate_nvn_first_col')
+                            second_col = st.session_state.get('bivariate_nvn_second_col')
+
+                            if first_col not in num_col or second_col not in num_col:
+                                st.warning('Select valid numerical columns first!')
+
+                            elif first_col == second_col:
+                                st.warning('Select two different numerical columns!')
+
+                            else:
+                                fig = go.Figure()
+
+                                fig.add_trace(
                                     go.Scatter(
-                                        x = df[column1],
-                                        y = df[column2],
+                                        x = df[first_col],
+                                        y = df[second_col],
                                         mode = 'markers',
-                                        name = column1 + ' ' + column2
+                                        opacity = 0.7,
+                                        name = f'{first_col} vs {second_col}'
                                     )
                                 )
+
                                 fig.update_layout(
-                                    title = f'{column1} vs {column2}',
-                                    xaxis_title = column1,
-                                    yaxis_title = column2
+                                    title = f'{first_col} vs {second_col}',
+                                    xaxis_title = first_col,
+                                    yaxis_title = second_col
                                 )
+
                                 st.plotly_chart(fig, width = 'stretch')
-                            else:
-                                st.warning('Select Columns first!')
 
                 elif st.session_state.get('bivariate_columns_type') == 'Numerical v/s Categorical':
-                    if len(num_col) == 0:
+                    if len(num_col) == 0 and len(cat_col) == 0:
+                        st.warning('No Numerical or Categorical Columns found!')
+                    elif len(num_col) == 0:
                         st.warning('No Numerical Columns Found!')
                     elif len(cat_col) == 0:
                         st.warning('No Categorical Columns Found!')
-                    elif len(num_col) == 0 and len(cat_col) == 0:
-                        st.warning('No Columns found!')
-                    elif len(num_col) > 0 and len(cat_col) > 0:
+                    else:
                         chart_type = st.selectbox(
                             label = 'Select Chart Type',
                             options = sorted(['Bar Chart', 'Line Chart', 'Box Plot', 'Violin Plot']),
                             key = 'bivariate_chart_type_nvc'
                         )
 
-                        if st.session_state.get('bivariate_chart_type_nvc') in ('Bar Chart'):
+                        if st.session_state.get('bivariate_chart_type_nvc') == 'Bar Chart':
                             orientation = st.selectbox(
                                 label = 'Select Orientation',
                                 options = sorted(['Horizontal', 'Vertical']),
                                 key = 'bivariate_chart_orientation',
                                 index = 0
                             )
-                            if len(num_col) == 0:
-                                st.warning('No Numerical Columns found!')
-                                st.session_state.bivariate_bar_chart_num_column_nvc = ''
-                            else:
-                                column1 = st.selectbox(
+                            aggregation = st.selectbox(
+                                label = 'Select Aggregation',
+                                options = ['Mean', 'Median', 'Sum', 'Count'],
+                                key = 'bivariate_bar_aggregation_nvc'
+                            )
+
+                            column1 = st.selectbox(
                                     label = 'Select Numerical Column',
                                     options = num_col,
                                     index = 0,
                                     key = 'bivariate_bar_chart_num_column_nvc'
                                 )
-                            if len(cat_col) == 0:
-                                st.warning('No Categorical Columns found!')
-                                st.session_state.bivariate_bar_chart_cat_column_nvc = ''
-                            else:
-                                column2 = st.selectbox(
+                            column2 = st.selectbox(
                                     label = 'Select Categorical Column',
                                     options = cat_col,
                                     index = 0,
                                     key = 'bivariate_bar_chart_cat_column_nvc'
                                 )
-                            if st.session_state.bivariate_bar_chart_num_column_nvc and st.session_state.bivariate_bar_chart_cat_column_nvc:
-                                st.session_state.bivariate_bar_col_selected_nvc = True
 
                         elif st.session_state.get('bivariate_chart_type_nvc') == 'Box Plot':
                             cat_column = st.selectbox(
@@ -475,9 +501,6 @@ def eda_show():
                                 key = 'bivariate_boxplot_notched_needed'
                             )
 
-                            if st.session_state.bivariate_boxplot_cat_col_nvc and st.session_state.bivariate_boxplot_num_col_nvc:
-                                st.session_state.bivariate_boxplot_col_selected_nvc = True
-
                         elif st.session_state.get('bivariate_chart_type_nvc') == 'Line Chart':
                             cat_column = st.selectbox(
                                 label = 'Select Categorical Column',
@@ -492,7 +515,7 @@ def eda_show():
                             agg_func = st.selectbox(
                                 label = 'Select Aggregation Function',
                                 options = sorted(['Mean', 'Sum', 'Median', 'Count']),
-                                key = 'bivariate_line_agg_func'
+                                key = 'bivariate_nvc_line_agg_func'
                             )
                             if st.session_state.bivariate_line_cat_col_nvc and st.session_state.bivariate_line_num_col_nvc:
                                 st.session_state.bivariate_line_col_selected_nvc = True
@@ -523,36 +546,44 @@ def eda_show():
                             fig = go.Figure()
 
                             if st.session_state.get('bivariate_chart_type_nvc') == 'Bar Chart':
-                                if st.session_state.get('bivariate_bar_col_selected_nvc') == True:
-                                    if st.session_state.get('bivariate_chart_orientation') == 'Horizontal':
-                                        xbar = df[st.session_state.bivariate_bar_chart_num_column_nvc]
-                                        ybar = df[st.session_state.bivariate_bar_chart_cat_column_nvc]
-                                        orientation = 'h'
-                                    else:
-                                        xbar = df[st.session_state.bivariate_bar_chart_cat_column_nvc]
-                                        ybar = df[st.session_state.bivariate_bar_chart_num_column_nvc]
-                                        orientation = 'v'
-                                    fig.add_traces(
+                                num_column = st.session_state.get('bivariate_bar_chart_num_column_nvc')
+                                cat_column = st.session_state.get('bivariate_bar_chart_cat_column_nvc')
+                                aggregation = st.session_state.get('bivariate_bar_aggregation_nvc')
+                                orientation = st.session_state.get('bivariate_chart_orientation')
+
+                                if num_column not in num_col or cat_column not in cat_col:
+                                    st.warning('Select valid columns first!')
+
+                                else:
+                                    bar_df = get_grouped_values(
+                                        df,
+                                        cat_column,
+                                        num_column,
+                                        aggregation
+                                    )
+
+                                    is_horizontal = orientation == 'Horizontal'
+
+                                    fig.add_trace(
                                         go.Bar(
-                                            x = xbar, 
-                                            y = ybar,
+                                            x = bar_df[num_column] if is_horizontal else bar_df[cat_column],
+                                            y = bar_df[cat_column] if is_horizontal else bar_df[num_column],
+                                            orientation = 'h' if is_horizontal else 'v',
                                             opacity = 0.7,
-                                            name = f'{column1} vs {column2}',
-                                            orientation = 'h' if st.session_state.get('bivariate_chart_orientation') == 'Horizontal' else 'v'
+                                            name = f'{aggregation} {num_column} by {cat_column}'
                                         )
                                     )
+
                                     fig.update_layout(
-                                        title = f'{st.session_state.bivariate_bar_chart_cat_column_nvc} by {st.session_state.bivariate_bar_chart_num_column_nvc}',
-                                        xaxis_title = f'{st.session_state.bivariate_bar_chart_cat_column_nvc}',
-                                        yaxis_title = f'{st.session_state.bivariate_bar_chart_num_column_nvc}'
+                                        title = f'{aggregation} {num_column} by {cat_column}',
+                                        xaxis_title = num_column if is_horizontal else cat_column,
+                                        yaxis_title = cat_column if is_horizontal else num_column
                                     )
+
                                     st.plotly_chart(fig, width = 'stretch')
-                                else:
-                                    st.warning('Select Columns first!')
                                 
 
                             elif st.session_state.get('bivariate_chart_type_nvc') == 'Box Plot':
-                                if st.session_state.get('bivariate_boxplot_col_selected_nvc') == True:
                                     fig.add_trace(
                                         go.Box(
                                             x = df[st.session_state.bivariate_boxplot_cat_col_nvc],
@@ -569,12 +600,10 @@ def eda_show():
                                         yaxis_title = st.session_state.bivariate_boxplot_num_col_nvc
                                     )
                                     st.plotly_chart(fig, width = 'stretch')
-                                else:
-                                    st.warning('Select Columns first!')
+
                             
                             elif st.session_state.get('bivariate_chart_type_nvc') == 'Line Chart':
-                                agg =  st.session_state.get('bivariate_line_agg_func', 'Mean')
-                                if st.session_state.get('bivariate_line_col_selected_nvc') == True:
+                                    agg = st.session_state.get('bivariate_nvc_line_agg_func', 'Mean')
                                     if agg == 'Mean':
                                         line_df = df.groupby(st.session_state.get('bivariate_line_cat_col_nvc'), observed = True)[st.session_state.get('bivariate_line_num_col_nvc')].mean()
                                     elif agg == 'Median':
@@ -601,8 +630,7 @@ def eda_show():
                                         yaxis_title = st.session_state.get('bivariate_line_num_col_nvc')
                                     )
                                     st.plotly_chart(fig, width = 'stretch')
-                                else:
-                                    st.warning('Select Columns first!')
+
 
                             elif st.session_state.get('bivariate_chart_type_nvc') == 'Violin Plot':
                                 if st.session_state.get('bivariate_violin_col_selected_nvc') == True:
@@ -644,7 +672,7 @@ def eda_show():
                                 )
                                 cat_col2 = st.selectbox(
                                     label = 'Select second categorical column',
-                                    options = cat_columns,
+                                    options = [col for col in cat_columns if col != cat_col1],
                                     index = 0,
                                     key = 'bivariate_heatmap_second_cat_col_cvc'
                                 )
@@ -716,9 +744,10 @@ def eda_show():
 
                             if st.session_state.get('bivariate_chart_type_cvc') == 'Heatmap':
                                 if st.session_state.get('bivariate_heatmap_col_selected_cvc') == True:
-                                    cross_tab = pd.crosstab(
-                                        df[st.session_state.bivariate_heatmap_first_cat_col_cvc],
-                                        df[st.session_state.bivariate_heatmap_second_cat_col_cvc]
+                                    cross_tab = get_crosstab(
+                                        df,
+                                        st.session_state.get('bivariate_heatmap_first_cat_col_cvc'),
+                                        st.session_state.get('bivariate_heatmap_second_cat_col_cvc')
                                     )
                                     fig.add_trace(
                                         go.Heatmap(
@@ -742,9 +771,10 @@ def eda_show():
 
                             elif st.session_state.get('bivariate_chart_type_cvc') == 'Grouped Bar Chart':
                                 if st.session_state.get('bivariate_grouped_bar_chart_col_selected_cvc') == True:
-                                    cross_tab = pd.crosstab(
-                                        df[st.session_state.bivariate_grouped_bar_chart_first_cat_col_cvc],
-                                        df[st.session_state.bivariate_grouped_bar_chart_second_cat_col_cvc]
+                                    cross_tab = get_crosstab(
+                                        df,
+                                        st.session_state.get('bivariate_grouped_bar_chart_first_cat_col_cvc'),
+                                        st.session_state.get('bivariate_grouped_bar_chart_second_cat_col_cvc')
                                     )
                                     for category in cross_tab.columns:
                                         fig.add_trace(
@@ -758,8 +788,8 @@ def eda_show():
                                             )
                                         )
                                     fig.update_layout(
-                                        title = f'{st.session_state.get('bivariate_heatmap_first_cat_col_cvc')} vs {st.session_state.get('bivariate_heatmap_second_cat_col_cvc')} Grouped Bar Chart',
-                                        xaxis_title = st.session_state.get('bivariate_heatmap_first_cat_col_cvc'),
+                                        title = f'{st.session_state.get('bivariate_grouped_bar_chart_first_cat_col_cvc')} vs {st.session_state.get('bivariate_grouped_bar_chart_second_cat_col_cvc')} Grouped Bar Chart',
+                                        xaxis_title = st.session_state.get('bivariate_grouped_bar_chart_first_cat_col_cvc'),
                                         yaxis_title = 'Count',
                                         barmode = 'group'
                                     )
@@ -768,9 +798,10 @@ def eda_show():
                                     st.warning('Select Columns first!')
                             elif st.session_state.get('bivariate_chart_type_cvc') == 'Stacked Bar Chart':
                                 if st.session_state.get('bivariate_stacked_bar_chart_col_selected_cvc') == True:
-                                    cross_tab = pd.crosstab(
-                                        df[st.session_state.bivariate_stacked_bar_chart_first_cat_col_cvc],
-                                        df[st.session_state.bivariate_stacked_bar_chart_second_cat_col_cvc]
+                                    cross_tab = get_crosstab(
+                                        df,
+                                        st.session_state.get('bivariate_stacked_bar_chart_first_cat_col_cvc'),
+                                        st.session_state.get('bivariate_stacked_bar_chart_second_cat_col_cvc')
                                     )
                                     for category in cross_tab.columns:
                                         fig.add_trace(
@@ -784,8 +815,8 @@ def eda_show():
                                             )
                                         )
                                     fig.update_layout(
-                                        title = f'{st.session_state.get('bivariate_heatmap_first_cat_col_cvc')} vs {st.session_state.get('bivariate_heatmap_second_cat_col_cvc')} Stacked Bar Chart',
-                                        xaxis_title = st.session_state.get('bivariate_heatmap_first_cat_col_cvc'),
+                                        title = f'{st.session_state.get('bivariate_stacked_bar_chart_first_cat_col_cvc')} vs {st.session_state.get('bivariate_stacked_bar_chart_second_cat_col_cvc')} Stacked Bar Chart',
+                                        xaxis_title = st.session_state.get('bivariate_stacked_bar_chart_first_cat_col_cvc'),
                                         yaxis_title = 'Count',
                                         barmode = 'stack'
                                     )
@@ -794,9 +825,10 @@ def eda_show():
                                     st.warning('Select Columns first!')
                             elif st.session_state.get('bivariate_chart_type_cvc') == '100% Stacked Bar Chart':
                                 if st.session_state.get('bivariate_100_stacked_bar_chart_col_selected_cvc', False) == True:
-                                    cross_tab = pd.crosstab(
-                                        df[st.session_state.get('bivariate_100_stacked_first_cat_col_cvc')],
-                                        df[st.session_state.get('bivariate_100_stacked_second_cat_col_cvc')],
+                                    cross_tab = get_crosstab(
+                                        df, 
+                                        st.session_state.get('bivariate_100_stacked_first_cat_col_cvc'),
+                                        st.session_state.get('bivariate_100_stacked_second_cat_col_cvc'),
                                         normalize = 'index'
                                     ) * 100
                                     for category in cross_tab.columns:
@@ -806,20 +838,20 @@ def eda_show():
                                             y = cross_tab[category],
                                             name = str(category),
                                             opacity = 0.8,
-                                            text = [f'{value : .2f}%'
+                                            text = [f'{value:.2f}%'
                                                 for value in cross_tab[category]],
                                             textposition ='inside',
                                             hovertemplate=(
-                                                f'{st.session_state.get('bivariate_heatmap_first_cat_col_cvc')}: %{{x}}<br>'
-                                                f'{st.session_state.get('bivariate_heatmap_second_cat_col_cvc')}: {category}<br>'
+                                                f'{st.session_state.get('bivariate_100_stacked_first_cat_col_cvc')}: %{{x}}<br>'
+                                                f'{st.session_state.get('bivariate_100_stacked_second_cat_col_cvc')}: {category}<br>'
                                                 'Percentage: %{y:.1f}%'
                                                 '<extra></extra>'
                                             )
                                             )
                                         )
                                     fig.update_layout(
-                                        title = f'{st.session_state.get('bivariate_heatmap_first_cat_col_cvc')} vs {st.session_state.get('bivariate_heatmap_second_cat_col_cvc')} (100% Stacked)',
-                                        xaxis_title = st.session_state.get('bivariate_heatmap_first_cat_col_cvc'),
+                                        title = f'{st.session_state.get('bivariate_100_stacked_first_cat_col_cvc')} vs {st.session_state.get('bivariate_100_stacked_second_cat_col_cvc')} (100% Stacked)',
+                                        xaxis_title = st.session_state.get('bivariate_100_stacked_first_cat_col_cvc'),
                                         yaxis_title = 'Percentage (%)',
                                         barmode = 'stack',
                                         yaxis = dict( range = [0, 100])
@@ -829,13 +861,13 @@ def eda_show():
                                     st.warning('Select Columns first!')
 
                 elif st.session_state.get('bivariate_columns_type') == 'Numerical v/s Datetime':
-                    if len(num_col) == 0:
+                    if len(num_col) == 0 and len(dt_col) == 0:
+                        st.warning('No Numerical or Datetime Columns found!')
+                    elif len(num_col) == 0:
                         st.warning('No Numerical Columns found!')
                     elif len(dt_col) == 0:
                         st.warning('No Datetime Columns found!')
-                    elif len(num_col) == 0 and len(dt_col) == 0:
-                        st.warning('No Columns found!')
-                    elif len(num_col) > 0 and len(dt_col) > 0:
+                    else:
                         chart_type = st.selectbox(
                             label = 'Select Chart Type',
                             options = sorted(['Line Chart']),
@@ -853,55 +885,62 @@ def eda_show():
                             index = 0,
                             key = 'bivariate_num_col_nvd'
                         )
-                        if st.session_state.bivariate_dt_col_nvd and st.session_state.bivariate_num_col_nvd:
-                            st.session_state.bivariate_col_selected_nvd = True
                         frequency = st.selectbox(
                             label = 'Select Time Frequency',
                             options = sorted(['Raw Data', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly']),
                             index = 0,
                             key = 'bivariate_line_datetime_frequency'
                         )
-                        aggregation = st.selectbox(
-                            label = 'Select Aggregation',
-                            options = sorted(['Mean', 'Median', 'Sum', 'Count']),
-                            index = 0,
-                            key = 'bivariate_line_agg_func'
-                        )
+                        if frequency != 'Raw Data':
+                            aggregation = st.selectbox(
+                                label = 'Select Aggregation',
+                                options = sorted(['Mean', 'Median', 'Sum', 'Count']),
+                                index = 0,
+                                key = 'bivariate_datetime_agg_func'
+                            )
 
                         with col2:
-                            if st.session_state.get('bivariate_col_selected_nvd') == True:
-                                freq = st.session_state.get('bivariate_line_datetime_frequency')
-                                agg = st.session_state.get('bivariate_line_agg_func')
+                            date_column = st.session_state.get('bivariate_dt_col_nvd')
+                            num_column = st.session_state.get('bivariate_num_col_nvd')
+                            freq = st.session_state.get('bivariate_line_datetime_frequency')
+
+                            if date_column not in dt_col or num_column not in num_col:
+                                st.warning('Select valid columns first!')
+
+                            else:
                                 plot_df = df[[num_column, date_column]].dropna().copy()
+
                                 plot_df[date_column] = pd.to_datetime(
                                     plot_df[date_column],
                                     errors = 'coerce'
                                 )
+
                                 plot_df = plot_df.dropna(subset = [date_column])
 
                                 if freq == 'Raw Data':
                                     line_df = plot_df.sort_values(date_column)
-                                    if agg == 'Count':
-                                        line_df = line_df.groupby(date_column)[num_column].count().reset_index()
-                                        y_values = line_df[num_column]
-                                        x_values = line_df[date_column]
-                                    else:
-                                        x_values = line_df[date_column]
-                                        y_values = line_df[num_column]
+                                    x_values = line_df[date_column]
+                                    y_values = line_df[num_column]
+                                    yaxis_title = num_column
+
                                 else:
-                                    frequency_map = {
-                                        'Daily' : "D",
-                                        'Weekly':'W',
-                                        'Monthly':'MS',
-                                        'Quarterly':'QS',
-                                        'Yearly':'YS'
-                                    }
                                     aggregation_map = {
                                         'Sum': 'sum',
                                         'Mean': 'mean',
                                         'Median': 'median',
                                         'Count': 'count'
                                     }
+
+                                    frequency_map = {
+                                        'Daily': 'D',
+                                        'Weekly': 'W',
+                                        'Monthly': 'MS',
+                                        'Quarterly': 'QS',
+                                        'Yearly': 'YS'
+                                    }
+
+                                    agg = st.session_state.get('bivariate_datetime_agg_func')
+
                                     line_df = (
                                         plot_df.groupby(
                                             pd.Grouper(
@@ -916,9 +955,11 @@ def eda_show():
 
                                     x_values = line_df.index
                                     y_values = line_df.values
+                                    yaxis_title = f'{agg} of {num_column}'
 
                                 if len(x_values) == 0:
-                                    st.warning("No data available to plot!")
+                                    st.warning('No data available to plot!')
+
                                 else:
                                     fig = go.Figure()
 
@@ -932,116 +973,128 @@ def eda_show():
                                             marker = dict(size = 8)
                                         )
                                     )
+
                                     fig.update_layout(
                                         title = f'{num_column} Over Time',
                                         xaxis_title = date_column,
-                                        yaxis_title = num_column if freq == 'Raw Data' else f'{agg} of {num_column}'
+                                        yaxis_title = yaxis_title
                                     )
+
                                     st.plotly_chart(fig, width = 'stretch')
-                            else:
-                                st.warning('Select Columns first!')
-        except Exception :
-            st.error("An Unknown error occured!")
+        except Exception as err:
+            st.exception(err)
 
-    with multivariate:
-        try:
-            col1, col2 = st.columns(2, border = True)
-            num_columns = num_col
-            cat_columns = cat_col + bool_col
-            with col1:
-                chart_type = st.selectbox(
-                    label = 'Select Chart Type',
-                    options = sorted(['Correlation Heatmap', 'Pair Plot', 'Grouped Bar Chart', 'Stacked Bar Chart']),
-                    index = 0,
-                    key = 'multivariate_chart_type'
-                )
-                if st.session_state.get('multivariate_chart_type') == 'Correlation Heatmap':
-                    if len(num_col) == 0:
-                        st.warning('No Numerical Columns found!')
-                    else:
-                        selected_cols = st.multiselect(
-                            label = 'Select Numerical Columns',
-                            options = num_columns,
-                            default = [],
-                            key = 'multivariate_heatmap_num_col'
-                        )
-                        corr_method = st.selectbox(
-                            label = 'Select Correlation Method',
-                            options = sorted(['Pearson', 'Spearman', 'Kendall']),
-                            index = 0,
-                            key = 'multivariate_heatmap_corr_method'
-                        )
-                        corr_method_map = {
-                            'Pearson' : 'pearson',
-                            'Spearman' : 'spearman',
-                            'Kendall' : 'kendall'
-                        }
-                        if st.session_state.multivariate_heatmap_num_col and st.session_state.multivariate_heatmap_corr_method:
-                            st.session_state.multivariate_heatmap_col_selected = True
-                elif st.session_state.get('multivariate_chart_type') == 'Pair Plot':
-                    if len(num_col) == 0:
-                        st.warning('No Numerical Columns found!')
-                    else:
-                        selected_cols = st.multiselect(
-                            label = 'Select Numerical Columns',
-                            options = num_columns,
-                            default = [],
-                            key = 'multivariate_heatmap_num_col'
-                        )
-                        if st.session_state.multivariate_heatmap_num_col and len(st.session_state.multivariate_heatmap_num_col) > 2:
-                            st.session_state.multivariate_pair_plot_col_selected = True
-                elif st.session_state.get('multivariate_chart_type') in ['Grouped Bar Chart', 'Stacked Bar Chart']:
-                    if len(num_col) == 0:
-                        st.warning('No Numerical Columns found!')
-                    elif len(cat_col) == 0:
-                        st.warning('No Categorical Columns found!')
-                    elif len(cat_col) < 2:
-                        st.warning('More than two categorical columns are required!')
-                    elif len(num_col) == 0 and len(cat_col) == 0:
-                        st.warning('No Columns found!')
-                    elif len(num_col) > 0 and len(cat_col) >= 2:
-                        if len(cat_columns) < 2:
-                            st.warning("Atleast two categorical columns are required!")
-                        else:
-                            column1 = st.selectbox(
-                            label='Select Numerical Column',
-                            options=num_columns,
-                            key='multivariate_bar_num_col' 
-                            )
-                            column2 = st.selectbox(
-                                label='Select First Categorical Column',
-                                options=cat_columns,
-                                key='multivariate_bar_cat_col1'
-                            )
-                            column3 = st.selectbox(
-                                label='Select Second Categorical Column',
-                                options=[
-                                    col for col in cat_columns
-                                    if col != column2
-                                ],
-                                key='multivariate_bar_cat_col2'
-                            )
-                            if st.session_state.multivariate_bar_num_col and st.session_state.multivariate_bar_cat_col1 and st.session_state.multivariate_bar_cat_col2:
-                                st.session_state.multivariate_bar_charts_col_selected = True
-                            aggregation = st.selectbox(
-                            label='Select Aggregation',
-                            options=['Sum', 'Mean', 'Median', 'Count'],
-                            key='multivariate_bar_aggregation'
-                            )
-                            orientation = st.selectbox(
-                                label='Select Orientation',
-                                options=['Horizontal', 'Vertical'],
-                                key='multivariate_bar_orientation'
-                            )
-
-                with col2:
+@st.fragment
+def multivariate_analysis(cat_col, num_col, dt_col, bool_col):
+    try:
+                df = st.session_state.get('file_uploaded')
+                if not isinstance(df, pd.DataFrame):
+                    raise ValueError("Upload a Dataset First!")
+                col1, col2 = st.columns(2, border = True)
+                num_columns = num_col
+                cat_columns = cat_col + bool_col
+                with col1:
+                    chart_type = st.selectbox(
+                        label = 'Select Chart Type',
+                        options = sorted(['Correlation Heatmap', 'Pair Plot', 'Grouped Bar Chart', 'Stacked Bar Chart']),
+                        index = 0,
+                        key = 'multivariate_chart_type'
+                    )
                     if st.session_state.get('multivariate_chart_type') == 'Correlation Heatmap':
-                        if st.session_state.get('multivariate_heatmap_col_selected') == True:
-                            if len(selected_cols) < 2:
-                                st.warning('Select atleast two numerical columns')
+                        if len(num_col) == 0:
+                            st.warning('No Numerical Columns found!')
+                        else:
+                            selected_cols = st.multiselect(
+                                label = 'Select Numerical Columns',
+                                options = num_columns,
+                                default = [],
+                                key = 'multivariate_heatmap_num_col'
+                            )
+                            corr_method = st.selectbox(
+                                label = 'Select Correlation Method',
+                                options = sorted(['Pearson', 'Spearman', 'Kendall']),
+                                index = 0,
+                                key = 'multivariate_heatmap_corr_method'
+                            )
+                            corr_method_map = {
+                                'Pearson' : 'pearson',
+                                'Spearman' : 'spearman',
+                                'Kendall' : 'kendall'
+                            }
+                            if st.session_state.multivariate_heatmap_num_col and st.session_state.multivariate_heatmap_corr_method:
+                                st.session_state.multivariate_heatmap_col_selected = True
+                    elif st.session_state.get('multivariate_chart_type') == 'Pair Plot':
+                        if len(num_col) == 0:
+                            st.warning('No Numerical Columns found!')
+                        else:
+                            selected_cols = st.multiselect(
+                                label = 'Select Numerical Columns',
+                                options = num_columns,
+                                default = [],
+                                key = 'multivariate_selected_num_cols'
+                            )
+
+                    elif st.session_state.get('multivariate_chart_type') in ['Grouped Bar Chart', 'Stacked Bar Chart']:
+                        if len(num_col) == 0 and len(cat_columns) < 2:
+                            st.warning('Numerical data and at least two categorical or Boolean columns are required!')
+                        if len(num_col) == 0:
+                            st.warning('No Numerical Columns found!')
+                        elif len(cat_columns) < 2:
+                            st.warning('At least two categorical or Boolean columns are required!')
+                        else:
+                            if len(cat_columns) < 2:
+                                st.warning("Atleast two categorical columns are required!")
                             else:
-                                corr_df = df[selected_cols].corr(
-                                    method = corr_method_map[corr_method]
+                                column1 = st.selectbox(
+                                label='Select Numerical Column',
+                                options=num_columns,
+                                key='multivariate_bar_num_col' 
+                                )
+                                column2 = st.selectbox(
+                                    label='Select First Categorical Column',
+                                    options=cat_columns,
+                                    key='multivariate_bar_cat_col1'
+                                )
+                                column3 = st.selectbox(
+                                    label='Select Second Categorical Column',
+                                    options=[
+                                        col for col in cat_columns
+                                        if col != column2
+                                    ],
+                                    key='multivariate_bar_cat_col2'
+                                )
+                                aggregation = st.selectbox(
+                                label='Select Aggregation',
+                                options=['Sum', 'Mean', 'Median', 'Count'],
+                                key='multivariate_bar_aggregation'
+                                )
+                                orientation = st.selectbox(
+                                    label='Select Orientation',
+                                    options=['Horizontal', 'Vertical'],
+                                    key='multivariate_bar_orientation'
+                                )
+    
+                    with col2:
+                        if st.session_state.get('multivariate_chart_type') == 'Correlation Heatmap':
+
+                            selected_cols = st.session_state.get('multivariate_heatmap_num_col', [])
+
+                            corr_method = st.session_state.get('multivariate_heatmap_corr_method')
+
+                            corr_method_map = {
+                                'Pearson': 'pearson',
+                                'Spearman': 'spearman',
+                                'Kendall': 'kendall'
+                            }
+
+                            if (len(selected_cols) < 2 or not all(col in num_col for col in selected_cols)):
+                                st.warning('Select at least two valid numerical columns!')
+
+                            else:
+                                corr_df = get_correlation(
+                                    df,
+                                    selected_cols,
+                                    corr_method_map[corr_method]
                                 )
 
                                 fig = go.Figure(
@@ -1056,100 +1109,160 @@ def eda_show():
                                         texttemplate = '%{text}'
                                     )
                                 )
+
                                 fig.update_layout(
-                                    title = f'{st.session_state.multivariate_heatmap_corr_method.title()} Correlation Heatmap',
+                                    title = f'{corr_method} Correlation Heatmap',
                                     xaxis_title = 'Numerical Variables',
                                     yaxis_title = 'Numerical Variables'
                                 )
+
                                 st.plotly_chart(fig, width = 'stretch')
-                        else:
-                            st.warning('Select Columns first!')
-                    elif st.session_state.get('multivariate_chart_type') == 'Pair Plot':
-                        if st.session_state.get('multivariate_pair_plot_col_selected') == True:
-                            if len(selected_cols) < 2:
-                                st.warning('Select atleast two numerical columns!')
+                        elif st.session_state.get('multivariate_chart_type') == 'Pair Plot':
+
+                            selected_cols = st.session_state.get('multivariate_selected_num_cols', [])
+
+                            if (
+                                len(selected_cols) < 2
+                                or not all(col in num_col for col in selected_cols)
+                            ):
+                                st.warning('Select at least two valid numerical columns!')
+
+                            elif len(selected_cols) > 6:
+                                st.warning('Select no more than six columns for a readable pair plot!')
+
                             else:
+                                plot_df = df[selected_cols].dropna()
+
+                                if len(plot_df) > 2000:
+                                    plot_df = plot_df.sample(2000, random_state = 42)
+                                    st.info('Pair plot uses a random sample of 2,000 rows.')
+
                                 fig = px.scatter_matrix(
-                                    df,
+                                    plot_df,
                                     dimensions = selected_cols,
                                     title = 'Pair Plot of Numerical Variables'
                                 )
-                                fig.update_layout(
-                                    height = 800
-                                )
+
+                                fig.update_layout(height = 800)
+
                                 st.plotly_chart(fig, width = 'stretch')
-                        else:
-                            st.warning('Select Columns first!')
-                    elif chart_type in [
-                        'Grouped Bar Chart',
-                        'Stacked Bar Chart'
-                    ]:
-                        if st.session_state.get('multivariate_bar_charts_col_selected') == True:
-                            if num_col and len(cat_col) >= 2:
-                                aggregation_map = {
-                                    'Sum': 'sum',
-                                    'Mean': 'mean',
-                                    'Median': 'median',
-                                    'Count': 'count',
-                                }
-                                if_missing_cat_col1 = st.session_state.get('multivariate_bar_cat_col1')
-                                if_missing_cat_col2 = st.session_state.get('multivariate_bar_cat_col2')
-                                if_missing_num_col = st.session_state.get('multivariate_bar_num_col')
-                                agg = st.session_state.get('multivariate_bar_aggregation')
+                        elif st.session_state.get('multivariate_chart_type') in ['Grouped Bar Chart', 'Stacked Bar Chart']:
 
-                                selected_cat_cols = [if_missing_cat_col1, if_missing_cat_col2]
+                            selected_cat_col1 = st.session_state.get('multivariate_bar_cat_col1')
+                            selected_cat_col2 = st.session_state.get('multivariate_bar_cat_col2')
+                            selected_num_col = st.session_state.get('multivariate_bar_num_col')
+                            aggregation = st.session_state.get('multivariate_bar_aggregation')
+                            orientation = st.session_state.get('multivariate_bar_orientation')
+                            chart_type = st.session_state.get('multivariate_chart_type')
 
-                                if not all(selected_cat_cols):
-                                    st.warning('Please Select all the required columns!')
-                                elif not all(col in cat_col for col in selected_cat_cols):
-                                    st.error('One or more selected categorical columns no longer exist in the dataset.')
-                                elif if_missing_num_col not in num_col:
-                                    st.error('Selected Numerical column no longer exist in the dataset.')
-                                elif agg not in aggregation_map:
-                                    st.error('Please Select a valid aggregation method.')
-                                else:
-                                    bar_df = df.pivot_table(
-                                        index=st.session_state.get('multivariate_bar_cat_col1'),
-                                        columns=st.session_state.get('multivariate_bar_cat_col2'),
-                                        values=st.session_state.get('multivariate_bar_num_col'),
-                                        aggfunc=aggregation_map[st.session_state.get('multivariate_bar_aggregation', '')],
-                                        fill_value=0
-                                    )
-                                    if bar_df.empty:
-                                        st.warning('No data available to plot!')
-                                    else:                                
-                                        fig = go.Figure()
-                                        is_horizontal = orientation == 'Horizontal'
-                                        orientation_chart = 'h' if is_horizontal else 'v'
-                                        for category in bar_df.columns:
-                                            if is_horizontal:
-                                                x_values = bar_df[category]
-                                                y_values = bar_df.index.astype(str)
-                                            else:
-                                                x_values = bar_df.index.astype(str)
-                                                y_values = bar_df[category]
-                                            fig.add_trace(
-                                                go.Bar(
-                                                    x=x_values,
-                                                    y=y_values,
-                                                    name=str(category),
-                                                    orientation=orientation_chart,
-                                                    opacity=0.8
-                                                )
-                                            )
-                                        barmode = 'group' if chart_type == 'Grouped Bar Chart' else 'stack'
-                                        fig.update_layout(
-                                            title=f'{aggregation} {column1} by {column2} and {column3}',
-                                            barmode=barmode,
-                                            xaxis_title=column1 if is_horizontal else column2,
-                                            yaxis_title=column2 if is_horizontal else column1,
-                                            legend_title=column3
-                                        )
-                                        st.plotly_chart(fig, width='stretch')
+                            if selected_num_col not in num_col:
+                                st.warning('Select a valid numerical column!')
+
+                            elif (
+                                selected_cat_col1 not in cat_columns
+                                or selected_cat_col2 not in cat_columns
+                            ):
+                                st.warning('Select valid categorical or Boolean columns!')
+
+                            elif selected_cat_col1 == selected_cat_col2:
+                                st.warning('Select two different categorical columns!')
 
                             else:
-                                st.warning("No Columns found!")
-                        else:
-                            st.warning('Select Columns first!')
-        except Exception:
-            st.error("An Unknown error occured!")
+                                bar_df = get_pivot_table(
+                                    df,
+                                    selected_cat_col1,
+                                    selected_cat_col2,
+                                    selected_num_col,
+                                    aggregation
+                                )
+
+                                if bar_df.empty:
+                                    st.warning('No data available to plot!')
+
+                                else:
+                                    fig = go.Figure()
+
+                                    is_horizontal = orientation == 'Horizontal'
+
+                                    for category in bar_df.columns:
+                                        fig.add_trace(
+                                            go.Bar(
+                                                x = (
+                                                    bar_df[category]
+                                                    if is_horizontal
+                                                    else bar_df.index.astype(str)
+                                                ),
+                                                y = (
+                                                    bar_df.index.astype(str)
+                                                    if is_horizontal
+                                                    else bar_df[category]
+                                                ),
+                                                name = str(category),
+                                                orientation = 'h' if is_horizontal else 'v',
+                                                opacity = 0.8
+                                            )
+                                        )
+
+                                    fig.update_layout(
+                                        title = (
+                                            f'{aggregation} {selected_num_col} by '
+                                            f'{selected_cat_col1} and {selected_cat_col2}'
+                                        ),
+                                        barmode = (
+                                            'group'
+                                            if chart_type == 'Grouped Bar Chart'
+                                            else 'stack'
+                                        ),
+                                        xaxis_title = (
+                                            selected_num_col
+                                            if is_horizontal
+                                            else selected_cat_col1
+                                        ),
+                                        yaxis_title = (
+                                            selected_cat_col1
+                                            if is_horizontal
+                                            else selected_num_col
+                                        ),
+                                        legend_title = selected_cat_col2
+                                    )
+
+                                    st.plotly_chart(fig, width = 'stretch')
+    except Exception as err:
+        st.exception(err)
+
+def eda_show():
+    st.title('Exploratory Data Analysis', text_alignment = 'center')
+
+    df = st.session_state.file_uploaded
+
+    if not isinstance(df, pd.DataFrame):
+        st.warning('Upload a Dataset First!')
+        return
+    num_col = sorted(df.select_dtypes(
+        include = 'number'
+    ).columns.tolist())
+    cat_col = sorted(df.select_dtypes(
+        include = ['object', 'string', 'category']
+    ).columns.tolist())
+    bool_col = sorted(df.select_dtypes(
+        include = ['boolean', 'bool']
+    ).columns.tolist())
+    dt_col = sorted(list([col for col in df.columns if pd.api.types.is_datetime64_any_dtype(df[col])]))
+    for key in list(st.session_state.keys()):
+        value = st.session_state.get(key)
+        if 'col' in key.lower() and 'type' not in key.lower() and 'selected' not in key.lower() and isinstance(value, str) and value not in df.columns:
+            del st.session_state[key]
+        elif 'selected' in key.lower() and isinstance(value, bool):
+            st.session_state[key] = False
+
+    univariate, bivariate, multivariate = st.tabs(['Univariate Analysis', 'Bivariate Analysis', 'Multivariate Analysis'])
+    
+    with univariate:
+        univariate_analysis(cat_col, num_col, bool_col)
+
+    with bivariate:
+        bivariate_analysis(cat_col, num_col, dt_col, bool_col)
+        
+    with multivariate:
+        multivariate_analysis(cat_col, num_col, dt_col, bool_col)
+        
