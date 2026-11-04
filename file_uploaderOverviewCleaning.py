@@ -23,10 +23,6 @@ def update_active_dataset(updated_df):
             st.session_state.get('dataset_version', 0) + 1
         )
 
-        with st.spinner(
-            text = 'Updating Data'
-        ):
-            st.rerun()
     except Exception:
         st.error("An error occured while saving the data!")
 
@@ -686,14 +682,15 @@ def dtype_detection_changing(col1_name, col2_name):
                 updated_df[col_nm] = converted
                 update_active_dataset(updated_df)
                 st.session_state.change_dtype_success_message = 'Datatype Changed Successfully!'
-
-                if 'change_dtype_success_message' in st.session_state:
-                        st.success(st.session_state.pop('change_dtype_success_message'))
-                
                 st.rerun()
+
+            if 'change_dtype_success_message' in st.session_state:
+                st.success(st.session_state.pop('change_dtype_success_message'))
+                
     except Exception:
         st.session_state.dtype_changing_exception = 'An error occured while changing the data type of column!'
-
+        if 'dtype_changing_exception' in st.session_state:
+            st.error(st.session_state.pop('dtype_changing_exception'))
 @st.fragment
 def data_format_handling():
     try:
@@ -1263,8 +1260,7 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
                                                 st.session_state.outlier_data_snapshot = None
 
                                                 st.session_state.outliers_handling_message = 'Outlier handling applied successfully!'
-                                                st.success(st.session_state.get('outliers_handling_message'))
-                                                st.rerun()
+                                                st.success(st.session_state.pop('outliers_handling_message'))
                         except Exception as e:
                             st.error(f"An Unknown error occured: {e}")
     except Exception:
