@@ -204,6 +204,9 @@ def apply_column_name_transformation():
                 st.session_state.column_name_transformation_msg = "Column names capitalized and stripped successfully!"
                             
         update_active_dataset(df_copy)
+
+        st.session_state.column_name_op_applied_message = "Column Name Updated Successfully!"
+
         st.rerun()
     except Exception as e:
         st.session_state.apply_column_name_transformation_exception = str(e)
@@ -500,9 +503,7 @@ def apply_data_format_transformation(): #AI, need to understand this!
         st.rerun()
 
     except (ValueError, TypeError, KeyError) as e:
-        st.session_state.apply_data_format_transformation_exception = (
-            f"Unable to apply transformation: {e}"
-        )
+        st.session_state.apply_data_format_transformation_exception = (f"Unable to apply transformation: {e}")
 
 def refresh_data():
     st.rerun()
@@ -675,8 +676,7 @@ def dtype_detection_changing(col1_name, col2_name):
             updated_df[col_nm] = converted
             update_active_dataset(updated_df)
             st.session_state.change_dtype_success_message = 'Datatype Changed Successfully!'
-            if 'change_dtype_success_message' in st.session_state:
-                st.success(st.session_state.pop('change_dtype_success_message'))
+            
             st.rerun()
 
 @st.fragment
@@ -881,20 +881,20 @@ def dataset_description():
     num_tab, cat_tab = st.tabs(["Numerical Columns", "Categorical Columns"])
 
     with num_tab:
-                    num_df = df.select_dtypes(include = 'number')
+        num_df = df.select_dtypes(include = 'number')
 
-                    if num_df.empty:
-                        st.warning('No Columns found!')
-                    else:
-                        st.dataframe(num_df.describe())
+        if num_df.empty:
+            st.warning('No Columns found!')
+        else:
+            st.dataframe(num_df.describe())
 
     with cat_tab:
-                    cat_df = df.select_dtypes(include = ['object', 'category', 'string'])
+        cat_df = df.select_dtypes(include = ['object', 'category', 'string'])
 
-                    if cat_df.empty:
-                        st.warning('No Columns found!')
-                    else:
-                        st.dataframe(cat_df.describe())
+        if cat_df.empty:
+            st.warning('No Columns found!')
+        else:
+            st.dataframe(cat_df.describe())
 
 def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_col_with_null_values, bool_col_with_null_values):
     st.subheader("Data Values Handling", text_alignment = 'center')
@@ -1236,9 +1236,9 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
                                             st.session_state.outlier_masks = {}
                                             st.session_state.outlier_limits = {}
                                             st.session_state.outlier_data_snapshot = None
-                                            st.success(
-                                                'Outlier handling applied successfully!'
-                                            )
+
+                                            st.session_state.outliers_handling_message = 'Outlier handling applied successfully!'
+                                            st.success(st.session_state.get('outliers_handling_message'))
                                             st.rerun()
                     except Exception as e:
                         st.error(f"An Unknown error occured: {e}")
@@ -1441,6 +1441,9 @@ def file_uploader_show():
                 dtype_col, clm_correct_dtype_col = st.columns(2, border = True)
 
                 dtype_detection_changing(dtype_col, clm_correct_dtype_col)
+
+                if 'change_dtype_success_message' in st.session_state:
+                        st.success(st.session_state.pop('change_dtype_success_message'))
 
                 data_format_handling()
 
