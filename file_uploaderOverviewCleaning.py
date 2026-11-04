@@ -12,15 +12,32 @@ def _get_bool_col(data):
 def _get_datetime_col(data):
     return sorted([col for col in data.columns if pd.api.types.is_datetime64_any_dtype(data[col])], key=str)
 
+def update_active_dataset(updated_df):
+    if not isinstance(updated_df, pd.DataFrame):
+        raise ValueError('Updated dataset must be a DataFrame.')
+
+    st.session_state.file_uploaded = updated_df.copy()
+
+    st.session_state.dataset_version = (
+        st.session_state.get('dataset_version', 0) + 1
+    )
+
+    with st.spinner(
+        text = 'Updating Data'
+    ):
+        st.rerun()
+
 def remove_null_values():
     try:
         column = st.session_state.get('remove_null_column')
-        df = st.session_state.get('file_uploaded')
+        df = st.session_state.get('file_uploaded').copy()
 
         if column == 'All':
-            st.session_state.file_uploaded = df.dropna()
+            updated_df = df.dropna()
         elif column in df.columns:
-            st.session_state.file_uploaded = df.dropna(subset=[column])
+            updated_df = df.dropna(subset=[column])
+
+        update_active_dataset(updated_df)
 
         st.session_state.null_removal_message = "Null values removed successfully!"
     except Exception as e:
@@ -136,7 +153,7 @@ def fill_null_values():
                     err_in_col = col
                     raise ValueError(f'{err_in_col} column not found!')
 
-        st.session_state.file_uploaded = df
+        update_active_dataset(df)
         st.session_state.null_fill_message = 'Null values filled successfully!'
     except Exception as e:
         st.session_state.null_filling_exception = str(e)
@@ -144,7 +161,7 @@ def fill_null_values():
 def duplicates_removal():
     try:
         dup_rem_type = st.session_state.get('dup_rem_type')
-        df = st.session_state.get('file_uploaded')
+        df = st.session_state.get('file_uploaded').copy()
 
         subset = None
         
@@ -155,7 +172,7 @@ def duplicates_removal():
         if dup_rem_type == 'Remove All':
             df = df.drop_duplicates(subset = subset, keep = False)
 
-        st.session_state.file_uploaded = df
+        update_active_dataset(df)
 
         st.session_state.dup_rem_message = 'Duplicates Removed Successfully!'
     except Exception as e:
@@ -186,7 +203,8 @@ def apply_column_name_transformation():
                 df_copy.columns = df_copy.columns.str.strip().str.capitalize()
                 st.session_state.column_name_transformation_msg = "Column names capitalized and stripped successfully!"
                             
-        st.session_state.file_uploaded = df_copy
+        update_active_dataset(df_copy)
+        st.rerun()
     except Exception as e:
         st.session_state.apply_column_name_transformation_exception = str(e)
 
@@ -210,7 +228,7 @@ def apply_operation(x, op, chars=" "):
 
 def apply_column_values_transformation():
     try:
-        df_copy = st.session_state.file_uploaded.copy()
+        df_copy = st.session_state.get('file_uploaded').copy()
 
         c_type = st.session_state.get("col_values_correctness_type")
         column = st.session_state.get("column_values_correctness")
@@ -267,7 +285,7 @@ def apply_column_values_transformation():
 
         df_copy[column] = df_copy[column].apply(lambda x: apply_operation(x, c_type, chars))
 
-        st.session_state.file_uploaded = df_copy
+        update_active_dataset(df_copy)
 
         messages = {
             "Strip": "Column values stripped successfully!",
@@ -282,13 +300,14 @@ def apply_column_values_transformation():
         }
 
         st.session_state.column_values_transformation_msg = messages[c_type]
+        st.rerun()
     except Exception as e:
         st.session_state.apply_column_values_transformation_exception = str(e)
 
 
 def apply_data_format_transformation(): #AI, need to understand this!
     try:
-        df_copy = st.session_state.file_uploaded.copy()
+        df_copy = st.session_state.get('file_uploaded').copy()
 
         column = st.session_state.get("format_column")
         format_type = st.session_state.get("format_type")
@@ -472,21 +491,25 @@ def apply_data_format_transformation(): #AI, need to understand this!
 
             df_copy[column] = converted
 
-        st.session_state.file_uploaded = df_copy
+        update_active_dataset(df_copy)
 
         st.session_state.data_format_transformation_msg = (
             f"Data format corrected successfully! "
             f"{invalid_values} invalid values could not be converted."
         )
+        st.rerun()
 
     except (ValueError, TypeError, KeyError) as e:
         st.session_state.apply_data_format_transformation_exception = (
             f"Unable to apply transformation: {e}"
         )
 
+def refresh_data():
+    st.rerun()
+
 @st.fragment
 def data_preview():
-    data = st.session_state.get('file_uploaded')
+    data = st.session_state.get('file_uploaded').copy()
     st.subheader("Dataset Preview", text_alignment = 'center')
     col1, col2 = st.columns([0.20, 0.80], border = True)
     with col1:
@@ -518,6 +541,12 @@ def data_preview():
             if st.session_state.get('preview_number'):
                 with col2:
                     st.dataframe(data.sample(n = preview_number), hide_index = True)
+
+        st.button(
+            label = 'Refresh Preview',
+            type = 'primary',
+            on_click = refresh_data
+        )
 
 @st.cache_data
 def detect_data_types(df):
@@ -642,7 +671,9 @@ def dtype_detection_changing(col1_name, col2_name):
             elif chng_dtype == 'Boolean':
                 converted = df[col_nm].astype('boolean')
 
-            st.session_state.file_uploaded[col_nm] = converted
+            updated_df = st.session_state.file_uploaded.copy()
+            updated_df[col_nm] = converted
+            update_active_dataset(updated_df)
             st.session_state.change_dtype_success_message = 'Datatype Changed Successfully!'
             if 'change_dtype_success_message' in st.session_state:
                 st.success(st.session_state.pop('change_dtype_success_message'))
@@ -650,9 +681,9 @@ def dtype_detection_changing(col1_name, col2_name):
 
 @st.fragment
 def data_format_handling():
+    df = st.session_state.get('file_uploaded').copy()
     st.subheader("Data Format Handling", text_alignment="center")
     with st.container(border=True):
-                                    df = st.session_state.file_uploaded
                                     format_column = st.selectbox(
                                         label="Select Column",
                                         options=sorted(df.columns.tolist()),
@@ -749,8 +780,12 @@ def data_format_handling():
                                         st.error(st.session_state.pop('apply_data_format_transformation_exception'))
 
 @st.fragment
-def columns_handling(data):
+def columns_handling():
     st.subheader('Columns Handling', text_alignment = 'center')
+    data = st.session_state.get('file_uploaded').copy()
+    if not isinstance(data, pd.DataFrame):
+        st.warning('Upload a dataset first!')
+        return
     
     clm_correct_nm_col1, clm_correct_nm_col2 = st.columns(2, border=True)
                     
@@ -841,11 +876,11 @@ def columns_handling(data):
 def dataset_description():
     st.subheader("Dataset Description", text_alignment = 'center')
 
+    df = st.session_state.get('file_uploaded').copy()
+
     num_tab, cat_tab = st.tabs(["Numerical Columns", "Categorical Columns"])
 
     with num_tab:
-                    df = st.session_state.file_uploaded
-
                     num_df = df.select_dtypes(include = 'number')
 
                     if num_df.empty:
@@ -854,8 +889,6 @@ def dataset_description():
                         st.dataframe(num_df.describe())
 
     with cat_tab:
-                    df = st.session_state.file_uploaded
-
                     cat_df = df.select_dtypes(include = ['object', 'category', 'string'])
 
                     if cat_df.empty:
@@ -868,7 +901,7 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
 
     missing, duplicate, outliers = st.columns(3, border = True)
 
-    df = st.session_state.get('file_uploaded')
+    df = st.session_state.get('file_uploaded').copy()
 
     if not isinstance(df, pd.DataFrame):
         st.warning("Upload a dataset first!")
@@ -1198,7 +1231,7 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
                                                 updated_df.loc[
                                                     mask, selected_col
                                                 ] = replacement_value
-                                            st.session_state.file_uploaded = updated_df
+                                            update_active_dataset(updated_df)
                                             st.session_state.outlier_detection_done = False
                                             st.session_state.outlier_masks = {}
                                             st.session_state.outlier_limits = {}
@@ -1399,7 +1432,7 @@ def file_uploader_show():
                     if len(col_with_null_values_greater_than_50_percentage) == 0:
                         st.warning('No suggestions found!')
                     else:
-                        st.write("These columns contain null values greater than 50% and can be removed:")
+                        st.markdown("#### These columns contain null values greater than 50% and can be removed:")
                         for col in col_with_null_values_greater_than_50_percentage:
                             st.markdown(f'• {col}')
 
@@ -1411,7 +1444,7 @@ def file_uploader_show():
 
                 data_format_handling()
 
-                columns_handling(data = df)
+                columns_handling()
                         
                 dataset_description()
 
@@ -1423,5 +1456,5 @@ def file_uploader_show():
                     file_name = 'cleaned_data.csv',
                     mime = 'text/csv'
                 )
-    except Exception:
-        st.error("An Unknown error occured!")
+    except Exception as err:
+        st.error(f"An Unknown error occured : {err}")
