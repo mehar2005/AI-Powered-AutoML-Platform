@@ -37,6 +37,8 @@ def DecisionTreeRegressorShow():
         y_train_pred = model.predict(X_train)
         y_pred = model.predict(X_test)
 
+        st.session_state.dtr_model = model
+
         train_mae = mean_absolute_error(y_train, y_train_pred)
         train_mse = mean_squared_error(y_train, y_train_pred)
         train_rmse = root_mean_squared_error(y_train, y_train_pred)

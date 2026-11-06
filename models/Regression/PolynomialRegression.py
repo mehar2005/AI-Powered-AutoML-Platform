@@ -44,6 +44,8 @@ def PolynomialRegressionShow():
         y_train_pred = model.predict(X_train)
         y_test_pred = model.predict(X_test)
 
+        st.session_state.pr_model = model
+
         train_metrics = {
             'mae': mean_absolute_error(y_train, y_train_pred),
             'mse': mean_squared_error(y_train, y_train_pred),
