@@ -407,6 +407,10 @@ def predictions_show():
 
             if hasattr(model, 'predict_proba'):
                 probabilities = model.predict_proba(input_df)
+                probabilities2 = model.predict_proba(input_data)[0]
+
+                for cls, prob in zip(model.classes_, probabilities2):
+                    print(f"Class {cls}: {prob:.10f}")
                 classes = _get_model_classes(model)
 
                 if classes is not None:
