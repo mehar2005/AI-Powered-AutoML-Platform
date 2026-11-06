@@ -415,6 +415,10 @@ def predictions_show():
                 if hasattr(model, 'predict_proba'):
                     probabilities = model.predict_proba(input_df)[0]
 
+                    print('Actual probabilities:', probabilities)
+                    print('Probability sum:', probabilities.sum())
+                    print('Model classes:', model.classes_)
+
                     for cls, prob in zip(model.classes_, probabilities):
                         print(f"Class {cls}: {prob:.10f}")
 
@@ -427,7 +431,16 @@ def predictions_show():
                         })
 
                         st.write('Prediction Probabilities')
-                        st.dataframe(probability_df, use_container_width = True)
+
+                        st.dataframe(
+                            probability_df,
+                            column_config = {
+                                'Probability': st.column_config.NumberColumn(
+                                    format = '%.10f'
+                                )
+                            },
+                            use_container_width = True
+                        )
 
             try:
                 with st.status(
