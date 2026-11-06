@@ -15,6 +15,7 @@ from file_uploaderOverviewCleaning import file_uploader_show
 from eda import eda_show
 from feature_engineering import fe_show
 from ml import ml_show
+from predictions import predictions_show
 
 st.set_page_config(
     page_title = "AI Powered AutoML Platform",
@@ -32,12 +33,10 @@ with col2:
 
 st.divider()
 
-file, eda, fe, ml = st.tabs(['File Upload & Data Cleaning', "Exploratory Data Analysis", 'Feature Engineering', "Machine Learning"])
+file, eda, fe, ml, pr = st.tabs(['File Upload & Data Cleaning', "Exploratory Data Analysis", 'Feature Engineering', "Machine Learning", "Predictions"])
 
 with file:
     file_uploader_show()
-
-st.divider()
 
 with eda:
     eda_show()
@@ -49,6 +48,11 @@ st.divider()
 
 with ml:
     ml_show()
+
+with pr:
+    predictions_show()
+
+st.divider()
 
 with st.container(border = True):
     col1, col2 = st.columns([13, 0.7])
