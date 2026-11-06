@@ -408,17 +408,26 @@ def predictions_show():
             if hasattr(model, 'predict_proba'):
                 probabilities = model.predict_proba(input_df)[0]
 
-                for cls, prob in zip(model.classes_, probabilities):
-                    print(f"Class {cls}: {prob:.10f}")
-                classes = _get_model_classes(model)
+                with st.container(border = True):
+                    st.markdown('## Prediction Result', text_alignment = 'center')
+                    st.markdown(f"### Predicted {st.session_state.get('target_variable')} : {prediction[0]}")
 
-                if classes is not None:
-                    probability_df = pd.DataFrame({
-                        'Class': classes,
-                        'Probability': probabilities[0]
-                    })
-                    st.write('Prediction Probabilities')
-                    st.dataframe(probability_df, use_container_width=True)
+                if hasattr(model, 'predict_proba'):
+                    probabilities = model.predict_proba(input_df)[0]
+
+                    for cls, prob in zip(model.classes_, probabilities):
+                        print(f"Class {cls}: {prob:.10f}")
+
+                    classes = _get_model_classes(model)
+
+                    if classes is not None:
+                        probability_df = pd.DataFrame({
+                            'Class': classes,
+                            'Probability': probabilities
+                        })
+
+                        st.write('Prediction Probabilities')
+                        st.dataframe(probability_df, use_container_width = True)
 
             try:
                 with st.status(
