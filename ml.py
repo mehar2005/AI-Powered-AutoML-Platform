@@ -1231,8 +1231,8 @@ def ml_show():
                                         if 'random_forest_classifier_exception' in st.session_state:
                                             st.error(st.session_state.pop('random_forest_classifier_exception'))
 
-        regression_model_trained = st.session_state.get('regression_models_metrics_information')        
-        classification_model_trained = st.session_state.get('classification_models_metrics_information')  
+        regression_model_trained = sorted(st.session_state.get('regression_models_metrics_information'), key = lambda x : x['r2'])      
+        classification_model_trained = sorted(st.session_state.get('classification_models_metrics_information'), key = lambda x : x['f1'])
 
         if problem_type_heading == 'Regression':
             with st.container(border = True):
