@@ -44,8 +44,6 @@ def KNNRegressionShow():
         test_rmse = root_mean_squared_error(y_test, y_pred)
         test_r2 = r2_score(y_test, y_pred)
 
-        st.session_state.knnr_model = model
-
         train_metrics = {
             'mae' : train_mae,
             'mse' : train_mse,
