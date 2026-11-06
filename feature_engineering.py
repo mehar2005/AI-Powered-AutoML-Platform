@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
+import uuid
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 
 DT_OPERATIONS = {
@@ -16,6 +17,37 @@ DT_OPERATIONS = {
     "Date Only": lambda s: s.dt.date,
     "Time Only": lambda s: s.dt.time,
 }
+
+def _sync_datetime_feature_mapping(data):
+    mapping = st.session_state.get("datetime_feature_mapping", {})
+    mapping_id = st.session_state.get("datetime_feature_mapping_id")
+
+    if mapping and data.attrs.get("datetime_feature_mapping_id") != mapping_id:
+        mapping = {}
+
+    mapping = {
+        output_column: details
+        for output_column, details in mapping.items()
+        if output_column in data.columns
+    }
+
+    st.session_state["datetime_feature_mapping"] = mapping
+
+    if mapping:
+        data.attrs["datetime_feature_mapping_id"] = mapping_id
+    else:
+        data.attrs.pop("datetime_feature_mapping_id", None)
+
+    return mapping
+
+def _store_datetime_feature_mapping(data, mapping):
+    mapping_id = st.session_state.get("datetime_feature_mapping_id")
+    if not mapping_id:
+        mapping_id = str(uuid.uuid4())
+        st.session_state["datetime_feature_mapping_id"] = mapping_id
+
+    st.session_state["datetime_feature_mapping"] = mapping
+    data.attrs["datetime_feature_mapping_id"] = mapping_id
 
 def _get_numeric_columns(data):
     try:
@@ -299,9 +331,30 @@ def apply_encoding():
         technique = st.session_state.get("feature_engineering_cat_encoding_technique")
         updated_data = data.copy()
         series = updated_data[column]
+        categorical_mapping = st.session_state.get("categorical_mapping", {})
+        categorical_mapping.pop(column, None)
         if technique == "One-Hot Encoding":
-            updated_data = pd.get_dummies(
-                updated_data, columns=[column], dtype=int, dummy_na=False
+            encoded_columns = pd.get_dummies(
+                series, prefix=column, dtype=int, dummy_na=False
+            )
+
+            category_mapping = {}
+
+            for category in series.dropna().unique():
+                category_mask = series.eq(category).fillna(False)
+                dummy_column = encoded_columns.columns[
+                    encoded_columns.loc[category_mask].iloc[0].to_numpy(dtype=bool)
+                ][0]
+
+                category_mapping[category] = dummy_column
+
+            one_hot_mapping = st.session_state.get("one_hot_mapping", {})
+            one_hot_mapping[column] = category_mapping
+            st.session_state["one_hot_mapping"] = one_hot_mapping
+            st.session_state["categorical_mapping"] = categorical_mapping
+
+            updated_data = pd.concat(
+                [updated_data.drop(columns=[column]), encoded_columns], axis=1
             )
         elif technique == "Label Encoding":
             non_missing = series.notna()
@@ -312,8 +365,24 @@ def apply_encoding():
                     series.loc[non_missing].astype(str)
                 )
             updated_data[column] = encoded
+            category_mapping = {
+                category: int(index)
+                for index, category in enumerate(encoder.classes_)
+            }
+
+            categorical_mapping[column] = category_mapping
+            st.session_state["categorical_mapping"] = categorical_mapping
         elif technique == "Frequency Encoding":
             frequency = series.value_counts(normalize = True)
+
+            category_mapping = {
+                category: float(value)
+                for category, value in frequency.items()
+            }
+
+            categorical_mapping[column] = category_mapping
+            st.session_state["categorical_mapping"] = categorical_mapping
+
             updated_data[column] = series.map(frequency)
         elif technique == "Ordinal Encoding":
             raw_categories = str(
@@ -335,6 +404,13 @@ def apply_encoding():
                 raise ValueError(
                     f"These observed categories are missing from your ordinal order: {preview}"
                 )
+            category_mapping = {
+                category: index
+                for index, category in enumerate(categories)
+            }
+
+            categorical_mapping[column] = category_mapping
+            st.session_state["categorical_mapping"] = categorical_mapping
             encoder = OrdinalEncoder(
                 categories=[categories],
                 handle_unknown="error",
@@ -366,6 +442,7 @@ def del_cat_col():
         column = st.session_state.get("cat_column")
         _require_column(data, column, "categorical")
         updated_data = data.drop(columns=[column]).copy()
+        _sync_datetime_feature_mapping(updated_data)
         st.session_state["file_uploaded"] = updated_data
         st.session_state["del_message"] = "Column deleted successfully."
         st.session_state.pop("del_error", None)
@@ -403,6 +480,7 @@ def dt_col_op():
         _require_column(data, column, "datetime")
         if operation == "Delete":
             updated_data = data.drop(columns=[column]).copy()
+            _sync_datetime_feature_mapping(updated_data)
             st.session_state["file_uploaded"] = updated_data
             st.session_state["dt_delete_message"] = "Datetime column deleted successfully."
             st.session_state.pop("dt_exception", None)
@@ -415,6 +493,7 @@ def dt_col_op():
                 raise ValueError("Select at least one datetime component.")
             updated_data = data.copy()
             output_columns = {}
+            datetime_feature_mapping = _sync_datetime_feature_mapping(updated_data)
             for component in components:
                 if component not in DT_OPERATIONS:
                     raise ValueError(f"Unsupported datetime component: {component}")
@@ -424,8 +503,13 @@ def dt_col_op():
                         f"Column '{output_name}' already exists. Rename or remove it before extracting again."
                     )
                 output_columns[output_name] = DT_OPERATIONS[component](data[column])
+                datetime_feature_mapping[output_name] = {
+                    "source": column,
+                    "component": component,
+                }
             for name, result in output_columns.items():
                 updated_data[name] = result
+            _store_datetime_feature_mapping(updated_data, datetime_feature_mapping)
             st.session_state["file_uploaded"] = updated_data
             st.session_state["extracted_col_message"] = "Datetime components extracted successfully."
             st.session_state.pop("dt_exception", None)
@@ -443,6 +527,7 @@ def del_num_col():
         if column not in _get_numeric_columns(data):
             raise ValueError("The selected column is no longer numerical.")
         updated_data = data.drop(columns=[column]).copy()
+        _sync_datetime_feature_mapping(updated_data)
         st.session_state.file_uploaded = updated_data
         st.session_state.del_num_col_message = "Numerical column deleted successfully."
     except (ValueError, KeyError) as exc:
@@ -453,6 +538,7 @@ def fe_show():
     if not isinstance(data, pd.DataFrame) or data.empty:
         st.warning("Upload a file to start feature engineering.")
         return
+    _sync_datetime_feature_mapping(data)
     numeric_columns = _get_numeric_columns(data)
     categorical_columns = _get_categoric_columns(data)
     datetime_columns = _get_datetime_columns(data)
