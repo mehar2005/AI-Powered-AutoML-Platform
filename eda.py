@@ -1199,7 +1199,9 @@ def multivariate_analysis(cat_col, num_col, dt_col, bool_col):
                                                 ),
                                                 name = str(category),
                                                 orientation = 'h' if is_horizontal else 'v',
-                                                opacity = 0.8
+                                                opacity = 0.8,
+                                                text = bar_df[category],
+                                                textposition = 'outside'
                                             )
                                         )
 
@@ -1231,8 +1233,6 @@ def multivariate_analysis(cat_col, num_col, dt_col, bool_col):
         st.exception(err)
 
 def eda_show():
-    st.title('Exploratory Data Analysis', text_alignment = 'center')
-
     df = st.session_state.file_uploaded
 
     if not isinstance(df, pd.DataFrame):
