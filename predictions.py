@@ -403,16 +403,9 @@ def predictions_show():
 
             with st.container(border = True):
                 st.markdown('## Prediction Result', text_alignment = 'center')
-                st.markdown(f'### Predicted {st.session_state.get('target_variable')} : {prediction[0]}')
+                st.markdown(f"### Predicted {st.session_state.get('target_variable')} : {prediction[0]}")
 
             if hasattr(model, 'predict_proba'):
-                probabilities = model.predict_proba(input_df)[0]
-
-                with st.container(border = True):
-                    st.markdown('## Prediction Result', text_alignment = 'center')
-                    st.markdown(f"### Predicted {st.session_state.get('target_variable')} : {prediction[0]}")
-
-                if hasattr(model, 'predict_proba'):
                     probabilities = model.predict_proba(input_df)[0]
 
                     print('Actual probabilities:', probabilities)
