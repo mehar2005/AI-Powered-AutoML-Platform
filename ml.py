@@ -1343,8 +1343,3 @@ def ml_show():
                     
     except Exception as err:
         st.exception(err)
-        # st.session_state.ml_exception = str(err)
-        # if 'ml_exception' in st.session_state:
-        #     st.error(st.session_state.pop('ml_exception'))
-
-            
