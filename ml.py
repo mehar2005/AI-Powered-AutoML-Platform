@@ -1243,7 +1243,7 @@ def ml_show():
                         regression_model_trained.items(),
                         columns = ['Model', 'R2 Value']
                     )
-                    st.dataframe(regression_model_trained_df.sort_values(by = 'r2', ascending = False), hide_index = True) 
+                    st.dataframe(regression_model_trained_df.sort_values(by = 'R2', ascending = False), hide_index = True) 
 
                     models_dict = {
                         'lnr_model' : st.session_state.get('lnr_model'),
@@ -1297,7 +1297,7 @@ def ml_show():
                         classification_model_trained.items(),
                         columns = ['Model', 'F1']
                     )
-                    st.dataframe(classification_model_trained_df.sort_values(by = 'f1', ascending = False), hide_index = True) 
+                    st.dataframe(classification_model_trained_df.sort_values(by = 'F1', ascending = False), hide_index = True) 
 
                     models_dict = {
                         'lgr_model' : st.session_state.get('lgr_model'),
