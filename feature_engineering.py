@@ -76,6 +76,7 @@ def _get_datetime_columns(data):
     except Exception as e:
         st.session_state.get_dt_col_exception = str(e)
 
+@st.cache_data
 def _get_data_or_raise():
         data = st.session_state.get("file_uploaded")
         if not isinstance(data, pd.DataFrame) or data.empty:
@@ -533,22 +534,9 @@ def del_num_col():
     except (ValueError, KeyError) as exc:
         st.session_state["num_col_not_found_error"] = str(exc)
 
-def fe_show():
-    data = st.session_state.get("file_uploaded")
-    if not isinstance(data, pd.DataFrame) or data.empty:
-        st.warning("Upload a file to start feature engineering.")
-        return
-    _sync_datetime_feature_mapping(data)
-    numeric_columns = _get_numeric_columns(data)
-    categorical_columns = _get_categoric_columns(data)
-    datetime_columns = _get_datetime_columns(data)
-    st.selectbox(
-        label="Select Column Type",
-        options=["Categorical", "Datetime", "Numerical"],
-        index=0,
-        key="column_type",
-    )
-    if st.session_state.column_type == "Numerical":
+@st.fragment
+def apply_num_col_transformation(data):
+        numeric_columns = _get_numeric_columns(data)
         if not numeric_columns:
             st.info("The uploaded file has no numerical columns to transform or bin.")
             return
@@ -705,112 +693,139 @@ def fe_show():
             if "transformation_error" in st.session_state:
                 st.error(st.session_state.pop("transformation_error"))
 
-    elif st.session_state.column_type == "Categorical":
-        if not categorical_columns:
-            st.info("The uploaded file has no categorical columns to transform.")
-            return
-        cat_operation = st.selectbox(
-            label="Select Operation",
-            options=sorted(["Combine", "Delete", "Encoding"]),
-            index = 0,
-            key="feature_engineering_operation_cat",
-        )
-        if cat_operation != "Combine":
+@st.fragment
+def apply_cat_col_transformation(data):
+            categorical_columns = _get_categoric_columns(data)
+            if not categorical_columns:
+                st.info("The uploaded file has no categorical columns to transform.")
+                return
+            cat_operation = st.selectbox(
+                label="Select Operation",
+                options=sorted(["Combine", "Delete", "Encoding"]),
+                index = 0,
+                key="feature_engineering_operation_cat",
+            )
+            if cat_operation != "Combine":
+                st.selectbox(
+                    label="Select Column",
+                    options=categorical_columns,
+                    index = 0,
+                    key="cat_column",
+                )
+                if cat_operation == "Encoding":
+                    technique = st.selectbox(
+                        label="Select Encoding Technique",
+                        options=sorted(["Label Encoding", "One-Hot Encoding", "Ordinal Encoding", "Frequency Encoding"]),
+                        index = 0,
+                        key="feature_engineering_cat_encoding_technique",
+                    )
+                    if technique == "Ordinal Encoding":
+                        st.text_input(
+                            label="Write categories in increasing order, separated by |",
+                            key="cat_col_ordinal_encoding_categories",
+                        )
+                    st.button(
+                        f"Apply Technique",
+                        key="cat_col_encoding_bt",
+                        on_click=apply_encoding,
+                    )
+                    if "encoding_message" in st.session_state:
+                        st.success(st.session_state.pop("encoding_message"))
+                    if "oe_categories_warning" in st.session_state:
+                        st.warning(st.session_state.pop("oe_categories_warning"))
+                    if "encoding_exception" in st.session_state:
+                        st.error(st.session_state.pop("encoding_exception"))
+                elif cat_operation == "Delete":
+                    st.button("Delete Column", key="cat_col_del", on_click=del_cat_col)
+                    if "del_message" in st.session_state:
+                        st.success(st.session_state.pop("del_message"))
+                    if "del_error" in st.session_state:
+                        st.error(st.session_state.pop("del_error"))
+            else:
+                st.selectbox(
+                    label="Select First Column",
+                    options=categorical_columns,
+                    index = 0,
+                    key="cat_column1",
+                )
+                st.selectbox(
+                    label="Select Second Column",
+                    options=categorical_columns,
+                    index = 0,
+                    key="cat_column2",
+                )
+                st.text_input(
+                    label="Enter New Column Name",
+                    key="cat_col_combine_new_name",
+                )
+                st.text_input(
+                    label="Any character to insert between the values? (Default: nothing)",
+                    value="",
+                    key="cat_col_combine_middle_char",
+                )
+                st.button(
+                    "Combine Columns",
+                    key="cat_col_combine_bt",
+                    on_click=combine_cat_col,
+                )
+                if "combine_message" in st.session_state:
+                    st.success(st.session_state.pop("combine_message"))
+                if "combine_error" in st.session_state:
+                    st.error(st.session_state.pop("combine_error"))
+
+@st.fragment
+def apply_dt_col_transformation(data):
+            datetime_columns = _get_datetime_columns(data)
+            if not datetime_columns:
+                st.warning("The uploaded file has no datetime-typed columns to transform.")
+                return
             st.selectbox(
                 label="Select Column",
-                options=categorical_columns,
+                options=datetime_columns,
                 index = 0,
-                key="cat_column",
+                key="dt_column",
             )
-            if cat_operation == "Encoding":
-                technique = st.selectbox(
-                    label="Select Encoding Technique",
-                    options=sorted(["Label Encoding", "One-Hot Encoding", "Ordinal Encoding", "Frequency Encoding"]),
-                    index = 0,
-                    key="feature_engineering_cat_encoding_technique",
+            operation = st.selectbox(
+                label="Select Operation",
+                options=["Delete", "Extracting Individual Date Components"],
+                index = 0,
+                key="feature_engineering_dt_encoding_technique",
+            )
+            if operation == "Extracting Individual Date Components":
+                st.multiselect(
+                    label="Select Components",
+                    options=sorted(DT_OPERATIONS.keys()),
+                    key="dt_components_op",
                 )
-                if technique == "Ordinal Encoding":
-                    st.text_input(
-                        label="Write categories in increasing order, separated by |",
-                        key="cat_col_ordinal_encoding_categories",
-                    )
-                st.button(
-                    f"Apply Technique",
-                    key="cat_col_encoding_bt",
-                    on_click=apply_encoding,
-                )
-                if "encoding_message" in st.session_state:
-                    st.success(st.session_state.pop("encoding_message"))
-                if "oe_categories_warning" in st.session_state:
-                    st.warning(st.session_state.pop("oe_categories_warning"))
-                if "encoding_exception" in st.session_state:
-                    st.error(st.session_state.pop("encoding_exception"))
-            elif cat_operation == "Delete":
-                st.button("Delete Column", key="cat_col_del", on_click=del_cat_col)
-                if "del_message" in st.session_state:
-                    st.success(st.session_state.pop("del_message"))
-                if "del_error" in st.session_state:
-                    st.error(st.session_state.pop("del_error"))
-        else:
-            st.selectbox(
-                label="Select First Column",
-                options=categorical_columns,
-                index = 0,
-                key="cat_column1",
-            )
-            st.selectbox(
-                label="Select Second Column",
-                options=categorical_columns,
-                index = 0,
-                key="cat_column2",
-            )
-            st.text_input(
-                label="Enter New Column Name",
-                key="cat_col_combine_new_name",
-            )
-            st.text_input(
-                label="Any character to insert between the values? (Default: nothing)",
-                value="",
-                key="cat_col_combine_middle_char",
-            )
-            st.button(
-                "Combine Columns",
-                key="cat_col_combine_bt",
-                on_click=combine_cat_col,
-            )
-            if "combine_message" in st.session_state:
-                st.success(st.session_state.pop("combine_message"))
-            if "combine_error" in st.session_state:
-                st.error(st.session_state.pop("combine_error"))
+            st.button("Apply Changes", key="dt_col_op_bt", on_click=dt_col_op)
+            if "dt_delete_message" in st.session_state:
+                st.success(st.session_state.pop("dt_delete_message"))
+            if "col_not_found_error" in st.session_state:
+                st.warning(st.session_state.pop("col_not_found_error"))
+            if "extracted_col_message" in st.session_state:
+                st.success(st.session_state.pop("extracted_col_message"))
+            if "dt_exception" in st.session_state:
+                st.error(st.session_state.pop("dt_exception"))
 
+def fe_show():
+    data = st.session_state.get("file_uploaded")
+    if not isinstance(data, pd.DataFrame) or data.empty:
+        st.warning("Upload a file to start feature engineering.")
+        return
+    _sync_datetime_feature_mapping(data)
+    
+    st.selectbox(
+        label="Select Column Type",
+        options=["Categorical", "Datetime", "Numerical"],
+        index=0,
+        key="column_type",
+    )
+    if st.session_state.column_type == "Numerical":
+        apply_num_col_transformation(data)
+
+    elif st.session_state.column_type == "Categorical":
+        apply_cat_col_transformation(data)
+        
     elif st.session_state.column_type == "Datetime":
-        if not datetime_columns:
-            st.warning("The uploaded file has no datetime-typed columns to transform.")
-            return
-        st.selectbox(
-            label="Select Column",
-            options=datetime_columns,
-            index = 0,
-            key="dt_column",
-        )
-        operation = st.selectbox(
-            label="Select Operation",
-            options=["Delete", "Extracting Individual Date Components"],
-            index = 0,
-            key="feature_engineering_dt_encoding_technique",
-        )
-        if operation == "Extracting Individual Date Components":
-            st.multiselect(
-                label="Select Components",
-                options=sorted(DT_OPERATIONS.keys()),
-                key="dt_components_op",
-            )
-        st.button("Apply Changes", key="dt_col_op_bt", on_click=dt_col_op)
-        if "dt_delete_message" in st.session_state:
-            st.success(st.session_state.pop("dt_delete_message"))
-        if "col_not_found_error" in st.session_state:
-            st.warning(st.session_state.pop("col_not_found_error"))
-        if "extracted_col_message" in st.session_state:
-            st.success(st.session_state.pop("extracted_col_message"))
-        if "dt_exception" in st.session_state:
-            st.error(st.session_state.pop("dt_exception"))
+        apply_dt_col_transformation(data)
+        
