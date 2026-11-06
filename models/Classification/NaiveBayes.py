@@ -38,6 +38,8 @@ def NaiveBayesShow():
         y_train_pred = model.predict(X_train)
         y_pred = model.predict(X_test)
 
+        st.session_state.nbc_model = model
+
         train_accuracy = accuracy_score(y_train, y_train_pred)
         train_precision = precision_score(y_train, y_train_pred, average = 'weighted', zero_division = 0)
         train_recall = recall_score(y_train, y_train_pred, average = 'weighted', zero_division = 0)

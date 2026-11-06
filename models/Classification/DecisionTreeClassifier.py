@@ -37,6 +37,9 @@ def DecisionTreeClassifierShow():
             random_state=42,
             **best_params
         )
+
+        st.session_state.dtc_model = model
+
         model.fit(X_train, y_train)
         y_train_pred = model.predict(X_train)
         y_pred = model.predict(X_test)
