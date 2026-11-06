@@ -31,9 +31,7 @@ def remove_null_values():
         column = st.session_state.get('remove_null_column')
         df = st.session_state.get('file_uploaded').copy()
 
-        if column == 'All':
-            updated_df = df.dropna()
-        elif column in df.columns:
+        if column in df.columns:
             updated_df = df.dropna(subset=[column])
 
         update_active_dataset(updated_df)
@@ -682,7 +680,6 @@ def dtype_detection_changing(col1_name, col2_name):
                 updated_df[col_nm] = converted
                 update_active_dataset(updated_df)
                 st.session_state.change_dtype_success_message = 'Datatype Changed Successfully!'
-                st.rerun()
 
             if 'change_dtype_success_message' in st.session_state:
                 st.success(st.session_state.pop('change_dtype_success_message'))
@@ -1268,7 +1265,6 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
 
 def file_uploader_show():
     try:
-        st.title("Dataset Upload", text_alignment = 'center')
         upload_file = st.file_uploader(
             label = "📂 Upload Dataset",
             key = 'uploaded_dataset',
