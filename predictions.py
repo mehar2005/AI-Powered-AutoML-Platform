@@ -406,10 +406,9 @@ def predictions_show():
                 st.markdown(f'### Predicted {st.session_state.get('target_variable')} : {prediction[0]}')
 
             if hasattr(model, 'predict_proba'):
-                probabilities = model.predict_proba(input_df)
-                probabilities2 = model.predict_proba(input_data)[0]
+                probabilities = model.predict_proba(input_df)[0]
 
-                for cls, prob in zip(model.classes_, probabilities2):
+                for cls, prob in zip(model.classes_, probabilities):
                     print(f"Class {cls}: {prob:.10f}")
                 classes = _get_model_classes(model)
 
