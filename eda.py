@@ -62,7 +62,7 @@ def univariate_analysis(cat_col, num_col, bool_col):
                 if not isinstance(df, pd.DataFrame):
                     raise ValueError("Upload a Dataset First!")
                 with st.container():
-                    col1, col2 = st.columns(2, border = True)
+                    col1, col2 = st.columns([0.30, 0.70], border = True)
     
                     with col1:
                         column_type = st.selectbox(
@@ -376,7 +376,7 @@ def bivariate_analysis(cat_col, num_col, dt_col, bool_col):
             df = st.session_state.get('file_uploaded')
             if not isinstance(df, pd.DataFrame):
                 raise ValueError("Upload a dataset first!")
-            col1, col2 = st.columns(2, border = True)
+            col1, col2 = st.columns([0.30, 0.70], border = True)
 
             with col1:
                 columns_type = st.selectbox(
@@ -990,7 +990,7 @@ def multivariate_analysis(cat_col, num_col, dt_col, bool_col):
                 df = st.session_state.get('file_uploaded')
                 if not isinstance(df, pd.DataFrame):
                     raise ValueError("Upload a Dataset First!")
-                col1, col2 = st.columns(2, border = True)
+                col1, col2 = st.columns([0.30, 0.70], border = True)
                 num_columns = num_col
                 cat_columns = cat_col + bool_col
                 with col1:

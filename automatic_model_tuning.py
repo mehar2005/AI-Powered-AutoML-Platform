@@ -151,7 +151,7 @@ def tuneDTC(X, y):
         n_iter = 10,
         scoring = 'accuracy',
         random_state=42,
-        n_jobs = 1,
+        n_jobs = -1,
         pre_dispatch = 1,
         cv = cv
     )
@@ -183,7 +183,7 @@ def tuneKNNC(X, y):
         n_iter=10,
         scoring='accuracy',
         random_state=42,
-        n_jobs=1,
+        n_jobs=-1,
         pre_dispatch = 1,
         cv=cv
     )
@@ -205,7 +205,7 @@ def tuneLGR(X, y):
         n_iter = 20,
         scoring = 'accuracy',
         random_state=42,
-        n_jobs = 1,
+        n_jobs = -1,
         pre_dispatch = 1,
         cv = cv
     )
@@ -229,7 +229,7 @@ def tuneNB(X, y):
         n_iter = 20,
         scoring = 'accuracy',
         random_state=42,
-        n_jobs = 1,
+        n_jobs = -1,
         pre_dispatch = 1,
         cv = cv
     )
@@ -252,7 +252,7 @@ def tuneRFC(X, y):
         n_iter = 20,
         scoring = 'accuracy',
         random_state=42,
-        n_jobs = 1,
+        n_jobs = -1,
         pre_dispatch = 1,
         cv = cv
     )
@@ -276,7 +276,7 @@ def tuneDTR(X, y):
         n_iter = 10,
         scoring = 'r2',
         random_state=42,
-        n_jobs = 1,
+        n_jobs = -1,
         pre_dispatch = 1,
         cv = cv
     )
@@ -308,7 +308,7 @@ def tuneKNNR(X, y):
         n_iter=10,
         scoring='r2',
         random_state=42,
-        n_jobs=1,
+        n_jobs=-1,
         pre_dispatch = 1,
         cv=cv
     )
@@ -330,7 +330,7 @@ def tuneLNR(X, y):
         n_iter = 10,
         scoring = 'r2',
         random_state=42,
-        n_jobs = 1,
+        n_jobs = -1,
         pre_dispatch = 1,
         cv = cv
     )
@@ -356,7 +356,7 @@ def tunePR(X, y):
         n_iter = 10,
         scoring = 'r2',
         random_state=42,
-        n_jobs = 1,
+        n_jobs = -1,
         pre_dispatch = 1,
         cv = cv
     )
@@ -379,7 +379,7 @@ def tuneRFR(X, y):
         n_iter = 10,
         scoring = 'r2',
         random_state=42,
-        n_jobs = 1,
+        n_jobs = -1,
         pre_dispatch = 1,
         cv = cv
     )

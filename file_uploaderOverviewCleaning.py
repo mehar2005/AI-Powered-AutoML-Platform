@@ -1268,7 +1268,7 @@ def file_uploader_show():
         upload_file = st.file_uploader(
             label = "📂 Upload Dataset",
             key = 'uploaded_dataset',
-            max_upload_size = 10,
+            max_upload_size = 5,
             type = ['csv', 'xlsx'],
             help = 'Uploaed your original dataset file containing the data'
         )

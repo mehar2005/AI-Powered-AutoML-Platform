@@ -79,7 +79,6 @@ def _get_datetime_columns(data):
     except Exception as e:
         st.session_state.get_dt_col_exception = str(e)
 
-@st.cache_data
 def _get_data_or_raise():
         data = st.session_state.get("file_uploaded")
         if not isinstance(data, pd.DataFrame) or data.empty:
@@ -538,7 +537,8 @@ def del_num_col():
         st.session_state["num_col_not_found_error"] = str(exc)
 
 @st.fragment
-def apply_num_col_transformation(data):
+def apply_num_col_transformation():
+        data = _get_data_or_raise()
         numeric_columns = _get_numeric_columns(data)
         if not numeric_columns:
             st.info("The uploaded file has no numerical columns to transform or bin.")
@@ -697,7 +697,8 @@ def apply_num_col_transformation(data):
                 st.error(st.session_state.pop("transformation_error"))
 
 @st.fragment
-def apply_cat_col_transformation(data):
+def apply_cat_col_transformation():
+            data = _get_data_or_raise()
             categorical_columns = _get_categoric_columns(data)
             if not categorical_columns:
                 st.info("The uploaded file has no categorical columns to transform.")
@@ -777,7 +778,8 @@ def apply_cat_col_transformation(data):
                     st.error(st.session_state.pop("combine_error"))
 
 @st.fragment
-def apply_dt_col_transformation(data):
+def apply_dt_col_transformation():
+            data = _get_data_or_raise()
             datetime_columns = _get_datetime_columns(data)
             if not datetime_columns:
                 st.warning("The uploaded file has no datetime-typed columns to transform.")
@@ -824,11 +826,11 @@ def fe_show():
         key="column_type",
     )
     if st.session_state.column_type == "Numerical":
-        apply_num_col_transformation(data)
+        apply_num_col_transformation()
 
     elif st.session_state.column_type == "Categorical":
-        apply_cat_col_transformation(data)
+        apply_cat_col_transformation()
         
     elif st.session_state.column_type == "Datetime":
-        apply_dt_col_transformation(data)
+        apply_dt_col_transformation()
         

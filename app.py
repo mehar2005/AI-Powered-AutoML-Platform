@@ -5,7 +5,7 @@ from datetime import datetime
 if 'file_uploaded' not in st.session_state:
     st.session_state.file_uploaded = pd.DataFrame({})
 if 'time_updated' not in st.session_state:
-    st.session_state.time_updated = datetime.today().strftime("%I:%M:%S %p")
+    st.session_state.time_updated = datetime.today().strftime("%d-%m-%Y %I:%M:%S %p")
 
 def reset_session():
     for key in list(st.session_state.keys()):

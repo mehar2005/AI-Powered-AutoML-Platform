@@ -3,7 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import shap
 from io import BytesIO
-import time
 import joblib
 from feature_engineering import DT_OPERATIONS
 
@@ -81,7 +80,6 @@ def _get_prediction_input_data(input_data, model_df, datetime_inputs, datetime_s
     return input_df
 
 def _get_display_values(input_df, categorical_mapping, one_hot_mapping):
-    """Return user-readable values for the SHAP plot without changing model input."""
     display_values = input_df.iloc[0].astype(object).copy()
 
     for column, category_mapping in categorical_mapping.items():
@@ -112,7 +110,6 @@ def _get_model_classes(model):
     return classes
 
 def _get_numeric_explanation_data(data):
-    """Give SHAP a numeric copy while preserving the model's feature names."""
     try:
         return pd.DataFrame(
             data.to_numpy(dtype=float),
@@ -124,9 +121,7 @@ def _get_numeric_explanation_data(data):
             'This model input contains a non-numeric feature that SHAP cannot explain.'
         ) from error
 
-def _show_prediction_explanation(model, input_df, background_data, prediction,
-                                 categorical_mapping, one_hot_mapping):
-    """Display one local SHAP waterfall using the same model call as prediction."""
+def _show_prediction_explanation(model, input_df, background_data, prediction, categorical_mapping, one_hot_mapping):
     if not isinstance(background_data, pd.DataFrame) or background_data.empty:
         st.info('A training-data sample is required to explain this prediction.')
         return
@@ -439,7 +434,7 @@ def predictions_show():
                 with st.status(
                     label = 'Generating SHAP Contributions',
                     state = 'running',
-                ):
+                ) as status:
                     _show_prediction_explanation(
                         model,
                         input_df,
@@ -448,6 +443,7 @@ def predictions_show():
                         categorical_mapping,
                         one_hot_mapping
                     )
+                    status.update(label = "SHAP Contributions Generated Successfully!", state = 'complete')
             except Exception as explanation_error:
                 st.warning(f'Prediction generated, but its SHAP explanation is unavailable: {explanation_error}')
 
