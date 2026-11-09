@@ -49,6 +49,7 @@ def _store_datetime_feature_mapping(data, mapping):
     st.session_state["datetime_feature_mapping"] = mapping
     data.attrs["datetime_feature_mapping_id"] = mapping_id
 
+@st.cache_data
 def _get_numeric_columns(data):
     try:
         return sorted(
@@ -58,6 +59,7 @@ def _get_numeric_columns(data):
     except Exception as e:
         st.session_state.get_num_col_exception = str(e)
 
+@st.cache_data
 def _get_categoric_columns(data):
     try:
         return sorted(
@@ -67,6 +69,7 @@ def _get_categoric_columns(data):
     except Exception as e:
         st.session_state.get_cat_col_exception = str(e)
 
+@st.cache_data
 def _get_datetime_columns(data):
     try:
         return sorted(
