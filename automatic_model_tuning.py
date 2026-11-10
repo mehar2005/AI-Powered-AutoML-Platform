@@ -162,7 +162,9 @@ def tuneDTC(X, y):
     best_model = rscv_dtc.best_params_
     st.session_state.best_dtc_params = rscv_dtc.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('Decision Tree Classifier', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 def tuneKNNC(X, y):
     model = KNeighborsClassifier()
 
@@ -193,7 +195,9 @@ def tuneKNNC(X, y):
     best_model = rscv_knnc.best_params_
     st.session_state.best_knnc_params = rscv_knnc.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('KNN Classifier', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 def tuneLGR(X, y):
     model = LogisticRegression()
 
@@ -216,7 +220,9 @@ def tuneLGR(X, y):
     best_model = rscv_lgr.best_params_
     st.session_state.best_lgr_params = rscv_lgr.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('Logistic Regression', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 
 def tuneNB(X, y):
     model = GaussianNB()
@@ -240,7 +246,9 @@ def tuneNB(X, y):
     best_model = rscv_nb.best_params_
     st.session_state.best_nb_params = rscv_nb.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('Naive Bayes Classifier', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 def tuneRFC(X, y):
     model = RandomForestClassifier()
 
@@ -263,7 +271,9 @@ def tuneRFC(X, y):
     best_model = rscv_rfc.best_params_
     st.session_state.best_rfc_params = rscv_rfc.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('Random Forest Classifier', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 
 def tuneDTR(X, y):
     model = DecisionTreeRegressor()
@@ -287,7 +297,9 @@ def tuneDTR(X, y):
     best_model = rscv_dtr.best_params_
     st.session_state.best_dtr_params = rscv_dtr.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('Decision Tree Regressor', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 def tuneKNNR(X, y):
     model = KNeighborsRegressor()
 
@@ -318,7 +330,9 @@ def tuneKNNR(X, y):
     best_model = rscv_knnr.best_params_
     st.session_state.best_knnr_params = rscv_knnr.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('KNN Regressor', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 def tuneLNR(X, y):
     model = LinearRegression()
 
@@ -341,7 +355,9 @@ def tuneLNR(X, y):
     best_model = rscv_lnr.best_params_
     st.session_state.best_lnr_params = rscv_lnr.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('Linear Regression', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 def tunePR(X, y):
     model = Pipeline([
         ('polynomialfeatures', PolynomialFeatures()),
@@ -367,7 +383,9 @@ def tunePR(X, y):
     best_model = rscv_pr.best_params_
     st.session_state.best_pr_params = rscv_pr.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('Polynomial Regression', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 def tuneRFR(X, y):
     model = RandomForestRegressor()
 
@@ -390,5 +408,7 @@ def tuneRFR(X, y):
     best_model = rscv_rfr.best_params_
     st.session_state.best_rfr_params = rscv_rfr.best_params_
 
-    st.dataframe(best_model)
+    st.subheader('Random Forest Regressor', text_alignment = 'center')
+    with st.expander(label = 'View Best Parameters'):
+        st.dataframe(best_model)
 

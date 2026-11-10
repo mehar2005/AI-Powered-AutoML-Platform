@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from scipy.stats import zscore
 
 def _get_cat_col(data):
     return sorted(data.select_dtypes(include = ['object', 'category', 'string']).columns.tolist(), key = str)
@@ -235,15 +234,11 @@ def apply_column_values_transformation():
         chars = st.session_state.get("col_values_strip_char", " ")
 
         if column is None or column not in df_copy.columns:
-            st.session_state.column_values_transformation_msg = (
-                "Please select a valid column."
-            )
+            st.session_state.column_values_transformation_msg = "Please select a valid column."
             return
 
         if c_type is None:
-            st.session_state.column_values_transformation_msg = (
-                "Please select a transformation."
-            )
+            st.session_state.column_values_transformation_msg = "Please select a transformation."
             return
 
         valid_operations = [
@@ -257,9 +252,7 @@ def apply_column_values_transformation():
         ]
 
         if c_type not in valid_operations:
-            st.session_state.column_values_transformation_msg = (
-                "Invalid transformation selected."
-            )
+            st.session_state.column_values_transformation_msg = "Invalid transformation selected."
             return
 
         if c_type == 'Make all values equal':
@@ -305,7 +298,7 @@ def apply_column_values_transformation():
         st.session_state.apply_column_values_transformation_exception = "An error occured while updating column values!"
 
 
-def apply_data_format_transformation(): #AI, need to understand this!
+def apply_data_format_transformation():
     try:
         df_copy = st.session_state.get('file_uploaded').copy()
 
@@ -314,94 +307,44 @@ def apply_data_format_transformation(): #AI, need to understand this!
         operation = st.session_state.get("format_operation")
 
         if column is None or column not in df_copy.columns:
-            st.session_state.data_format_transformation_msg = (
-                "Please select a valid column."
-            )
+            st.session_state.data_format_transformation_msg = "Please select a valid column."
             return
 
         if format_type is None or operation is None:
-            st.session_state.data_format_transformation_msg = (
-                "Please select a valid format and operation."
-            )
+            st.session_state.data_format_transformation_msg = "Please select a valid format and operation."
             return
 
         series = df_copy[column]
         invalid_values = 0
 
         if format_type == "Text":
-
             if operation == "Strip Whitespace":
-                df_copy[column] = series.apply(
-                    lambda x: x.strip() if isinstance(x, str) else x
-                )
-
+                df_copy[column] = series.apply(lambda x: x.strip() if isinstance(x, str) else x)
             elif operation == "Collapse Multiple Spaces":
-                df_copy[column] = series.apply(
-                    lambda x: " ".join(x.split())
-                    if isinstance(x, str) else x
-                )
-
+                df_copy[column] = series.apply(lambda x: " ".join(x.split()) if isinstance(x, str) else x)
             elif operation == "Lowercase":
-                df_copy[column] = series.apply(
-                    lambda x: x.lower() if isinstance(x, str) else x
-                )
-
+                df_copy[column] = series.apply(lambda x: x.lower() if isinstance(x, str) else x)
             elif operation == "Uppercase":
-                df_copy[column] = series.apply(
-                    lambda x: x.upper() if isinstance(x, str) else x
-                )
-
+                df_copy[column] = series.apply(lambda x: x.upper() if isinstance(x, str) else x)
             elif operation == "Title Case":
-                df_copy[column] = series.apply(
-                    lambda x: x.title() if isinstance(x, str) else x
-                )
+                df_copy[column] = series.apply(lambda x: x.title() if isinstance(x, str) else x)
 
-        # Numerical Format Correction
         elif format_type == "Numerical":
-
             values = series.astype("string").str.strip()
-
             if operation == "Remove Symbols":
-                values = values.str.replace(
-                    r"^[^\w.]+|[^\w.]+$", "", regex=True
-                )
-
-                converted = pd.to_numeric(
-                    values, errors="coerce"
-                )
-
+                values = values.str.replace(r"^[^\w.]+|[^\w.]+$", "", regex=True)
+                converted = pd.to_numeric(values, errors="coerce")
             elif operation == "Convert Percentage to Decimal":
-                percentage_mask = values.str.endswith(
-                    "%", na=False
-                )
-
-                values = values.str.replace(
-                    "%", "", regex=False
-                )
-
-                converted = pd.to_numeric(
-                    values, errors="coerce"
-                )
-
-                converted.loc[percentage_mask] = (
-                    converted.loc[percentage_mask] / 100
-                )
-
-                invalid_values = int(
-                    (series.notna() & converted.isna()).sum()
-                )
-
+                percentage_mask = values.str.strip().str.endswith("%", na=False)
+                values = values.str.strip().str.replace("%", "", regex=False)
+                converted = pd.to_numeric(values, errors="coerce")
+                converted.loc[percentage_mask] = (converted.loc[percentage_mask] / 100)
+                invalid_values = int((series.notna() & converted.isna()).sum())
             df_copy[column] = converted
 
-        # Datetime Format Correction
         elif format_type == "Datetime":
-
-            input_format = st.session_state.get(
-                "format_input_date"
-            )
-            output_format = st.session_state.get(
-                "format_output_date"
-            )
+            input_format = st.session_state.get("format_input_date")
+            output_format = st.session_state.get("format_output_date")
 
             date_formats = {
                 "DD/MM/YYYY": "%d/%m/%Y",
@@ -421,12 +364,8 @@ def apply_data_format_transformation(): #AI, need to understand this!
                 "YYYY/MM/DD": "%Y/%m/%d",
             }
 
-
             if input_format == "Auto Detect":
-                date_order = st.session_state.get(
-                    "format_date_order", "Day First"
-                )
-
+                date_order = st.session_state.get("format_date_order", "Day First")
                 converted = pd.to_datetime(
                     series,
                     errors="coerce",
@@ -438,24 +377,15 @@ def apply_data_format_transformation(): #AI, need to understand this!
                     if input_format == "Custom"
                     else date_formats[input_format]
                 )
-
                 converted = pd.to_datetime(
                     series,
                     format=date_format,
                     errors="coerce"
                 )
+            invalid_values = int((series.notna() & converted.isna()).sum())
+            df_copy[column] = converted.dt.strftime(output_formats[output_format])
 
-            invalid_values = int(
-                (series.notna() & converted.isna()).sum()
-            )
-
-            df_copy[column] = converted.dt.strftime(
-                output_formats[output_format]
-            )
-
-        # Boolean Format Correction
         elif format_type == "Boolean":
-
             boolean_values = {
                 "yes": True,
                 "y": True,
@@ -470,25 +400,15 @@ def apply_data_format_transformation(): #AI, need to understand this!
             def convert_boolean(x):
                 if pd.isna(x):
                     return pd.NA
-
                 if isinstance(x, (bool, np.bool_)):
                     return bool(x)
-
                 value = str(x).strip().lower()
-
                 if value in boolean_values:
                     return boolean_values[value]
-
                 return pd.NA
 
-            converted = series.apply(convert_boolean).astype(
-                "boolean"
-            )
-
-            invalid_values = int(
-                (series.notna() & converted.isna()).sum()
-            )
-
+            converted = series.apply(convert_boolean).astype("boolean")
+            invalid_values = int((series.notna() & converted.isna()).sum())
             df_copy[column] = converted
 
         update_active_dataset(df_copy)
@@ -512,14 +432,14 @@ def data_preview():
         st.subheader("Dataset Preview", text_alignment = 'center')
         col1, col2 = st.columns([0.20, 0.80], border = True)
         with col1:
-            preview_type = st.selectbox(
+            st.selectbox(
                 label = "Select Preview Type",
                 options = ["First", "Last", "Random"],
                 index = 0,
                 key = 'preview_type',
                 help = 'Enter preview type you want in the dataset preview'
             )
-            preview_number = st.number_input(
+            st.number_input(
                 label = 'Number of rows to display',
                 value = 1,
                 min_value = 1,
@@ -528,16 +448,18 @@ def data_preview():
                 key = 'preview_number',
                 help = 'Enter number of rows to show in the dataset preview'
             )
-            if st.session_state.get('preview_type') == "First":
-                if st.session_state.get('preview_number'):
+            preview_type = st.session_state.get('preview_type')
+            preview_number = st.session_state.get('preview_number')
+            if preview_type == "First":
+                if preview_number:
                     with col2:
                         st.dataframe(data.head(preview_number), hide_index = True)
-            elif st.session_state.get('preview_type') == "Last":
-                if st.session_state.get('preview_number'):
+            elif preview_type == "Last":
+                if preview_number:
                     with col2:
                         st.dataframe(data.tail(preview_number).iloc[::-1], hide_index = True)
-            elif st.session_state.get('preview_type') == "Random":
-                if st.session_state.get('preview_number'):
+            elif preview_type == "Random":
+                if preview_number:
                     with col2:
                         st.dataframe(data.sample(n = preview_number), hide_index = True)
 
@@ -598,14 +520,16 @@ def detect_data_types(df):
     except Exception:
         st.session_state.dtype_detection_exception = 'An error occured while detecting the data types of columns!'
 
-def dtype_detection_changing(col1_name, col2_name):
+def dtype_detection_changing():
     try:
         st.subheader('Datatype Detection & Handling', text_alignment = 'center')
 
         df = st.session_state.file_uploaded.copy()
         types = detect_data_types(df)
 
-        with col1_name:
+        dtype_col, clm_correct_dtype_col = st.columns(2, border = True)
+
+        with dtype_col:
             st.subheader("Automatically Detected Data Types", text_alignment = 'center')
 
             col = st.columns(3, border = True)
@@ -620,7 +544,7 @@ def dtype_detection_changing(col1_name, col2_name):
                         for column in columns:
                             st.markdown(f'• `{column}`')
 
-        with col2_name:
+        with clm_correct_dtype_col:
             st.subheader("Manual Datatype Conversion", text_alignment = 'center')
 
             if len(df.columns) == 0:
@@ -633,7 +557,10 @@ def dtype_detection_changing(col1_name, col2_name):
                 key = 'dtype_column'
             )
 
-            detected_type = next(datatype for datatype, columns in types.items() if col_nm in columns)
+            detected_type = ''
+            for datatype, columns in types.items():
+                if col_nm in columns:
+                    detected_type = datatype
 
             st.write(f'Detected Datatype: {detected_type}')
             st.write(f'Pandas Datatype: {df[col_nm].dtype}')
@@ -650,7 +577,7 @@ def dtype_detection_changing(col1_name, col2_name):
                     key = 'dt_chng_datatype_checkbox'
                 )
 
-            st.caption("*Note - Performing wrong operation on wrong datatype will not cause any error. Infact, it will show as operation completed.")
+            st.caption("*Note - Some invalid values may be converted into missing values instead of raising an error. Please verify the converted data before proceeding.")
 
             apply_bt = st.button(
                 label = 'Apply',
@@ -694,100 +621,97 @@ def data_format_handling():
         df = st.session_state.get('file_uploaded').copy()
         st.subheader("Data Format Handling", text_alignment="center")
         with st.container(border=True):
-                                        format_column = st.selectbox(
-                                            label="Select Column",
-                                            options=sorted(df.columns.tolist()),
-                                            key="format_column"
-                                        )
-                                        format_type = st.selectbox(
-                                            label="Select Format Type",
-                                            options=[
-                                                "Text",
-                                                "Numerical",
-                                                "Datetime",
-                                                "Boolean"
-                                            ],
-                                            key="format_type"
-                                        )
-                                        if format_type == "Text":
-                                            format_operations = [
-                                                "Strip Whitespace",
-                                                "Collapse Multiple Spaces",
-                                                "Lowercase",
-                                                "Uppercase",
-                                                "Title Case"
-                                            ]
-                                        elif format_type == "Numerical":
-                                            format_operations = [
-                                                "Remove Symbols",
-                                                "Convert Percentage to Decimal"
-                                            ]    
-                                        elif format_type == "Datetime":
-                                            format_operations = [
-                                                "Standardize Date Format"
-                                            ]
-                                            input_date = st.selectbox(
-                                                label="Current Date Format",
-                                                options=[
-                                                    "Auto Detect",
-                                                    "DD/MM/YYYY",
-                                                    "MM/DD/YYYY",
-                                                    "YYYY-MM-DD",
-                                                    "DD-MM-YYYY",
-                                                    "MM-DD-YYYY",
-                                                    "YYYY/MM/DD",
-                                                    "DD Mon YYYY",
-                                                    "Custom"
-                                                ],
-                                                key="format_input_date"
-                                            )
-                                            if input_date == "Auto Detect":
-                                                date_order = st.selectbox(
-                                                    label="Interpret Date As",
-                                                    options=["Day First", "Month First"],
-                                                    key="format_date_order"
-                                                )
-                                            if input_date == "Custom":
-                                                st.text_input(
-                                                    label="Enter Python Date Format",
-                                                    placeholder="%d/%m/%Y",
-                                                    key="format_custom_date"
-                                                )
-                                            output_date = st.selectbox(
-                                                label="Standardized Date Format",
-                                                options=[
-                                                    "YYYY-MM-DD",
-                                                    "DD/MM/YYYY",
-                                                    "MM/DD/YYYY",
-                                                    "DD-MM-YYYY",
-                                                    "YYYY/MM/DD"
-                                                ],
-                                                key="format_output_date"
-                                            )
-                                        else:
-                                            format_operations = [
-                                                "Standardize Boolean Values"
-                                            ]
-                                        operation = st.selectbox(
-                                            label="Select Operation",
-                                            options=format_operations,
-                                            key="format_operation"
-                                        )
-                                        st.caption("*Note - Performing wrong operation on wrong datatype will not cause any error. Infact, it will show as operation completed.")
-                                        st.button(
-                                            label="Apply Format Correction",
-                                            key="apply_data_format",
-                                            on_click=apply_data_format_transformation
-                                        )
-                                        if st.session_state.get(
-                                            "data_format_transformation_msg"
-                                        ):
-                                            st.success(
-                                                st.session_state.data_format_transformation_msg
-                                            )
-                                            del st.session_state.data_format_transformation_msg
-                                        if 'apply_data_format_transformation_exception' in st.session_state:
-                                            st.error(st.session_state.pop('apply_data_format_transformation_exception'))
+            format_column = st.selectbox(
+                label="Select Column",
+                options=sorted(df.columns.tolist()),
+                key="format_column"
+            )
+            format_type = st.selectbox(
+                label="Select Format Type",
+                options=[
+                    "Text",
+                    "Numerical",
+                    "Datetime",
+                    "Boolean"
+                ],
+                key="format_type"
+            )
+            if format_type == "Text":
+                format_operations = [
+                    "Strip Whitespace",
+                    "Collapse Multiple Spaces",
+                    "Lowercase",
+                    "Uppercase",
+                    "Title Case"
+                ]
+            elif format_type == "Numerical":
+                format_operations = [
+                    "Remove Symbols",
+                    "Convert Percentage to Decimal"
+                ]    
+            elif format_type == "Datetime":
+                format_operations = [
+                    "Standardize Date Format"
+                ]
+                input_date = st.selectbox(
+                    label="Current Date Format",
+                    options=[
+                        "Auto Detect",
+                        "DD/MM/YYYY",
+                        "MM/DD/YYYY",
+                        "YYYY-MM-DD",
+                        "DD-MM-YYYY",
+                        "MM-DD-YYYY",
+                        "YYYY/MM/DD",
+                        "DD Mon YYYY",
+                        "Custom"
+                    ],
+                    key="format_input_date"
+                )
+                if input_date == "Auto Detect":
+                    date_order = st.selectbox(
+                        label="Interpret Date As",
+                        options=["Day First", "Month First"],
+                        key="format_date_order"
+                    )
+                if input_date == "Custom":
+                    st.text_input(
+                        label="Enter Python Date Format",
+                        placeholder="%d/%m/%Y",
+                        key="format_custom_date",
+                        help="%d/%m/%Y"
+                    )
+                output_date = st.selectbox(
+                    label="Standardized Date Format",
+                    options=[
+                        "YYYY-MM-DD",
+                        "DD/MM/YYYY",
+                        "MM/DD/YYYY",
+                        "DD-MM-YYYY",
+                        "YYYY/MM/DD"
+                    ],
+                    key="format_output_date"
+                )
+            else:
+                format_operations = [
+                    "Standardize Boolean Values"
+                ]
+            operation = st.selectbox(
+                label="Select Operation",
+                options=format_operations,
+                key="format_operation"
+            )
+            st.caption("*Note - Performing wrong operation on wrong datatype will not cause any error. Infact, it will show as operation completed.")
+            st.button(
+                label="Apply Format Correction",
+                key="apply_data_format",
+                on_click=apply_data_format_transformation
+            )
+            if st.session_state.get("data_format_transformation_msg"):
+                st.success(st.session_state.data_format_transformation_msg)
+                del st.session_state.data_format_transformation_msg
+            if 'apply_data_format_transformation_exception' in st.session_state:
+                st.error(st.session_state.pop('apply_data_format_transformation_exception'))
     except Exception:
         st.session_state.data_format_exception = 'An error occured while changing format of the data!'
 
@@ -803,88 +727,88 @@ def columns_handling():
         clm_correct_nm_col1, clm_correct_nm_col2 = st.columns(2, border=True)
                         
         with clm_correct_nm_col1:
-                            st.subheader('Column Name', text_alignment = 'center')
-                            correct_type = st.selectbox(
-                                label='Select Correctness Type',
-                                options=sorted(["Strip", "Capitalize", "Capitalize + Strip", "Left Strip", "Right Strip"]),
-                                index=0,
-                                key = 'col_name_correctness_type'
-                            )
-                            if correct_type in [
-                                "Strip",
-                                "Left Strip",
-                                "Right Strip",
-                                "Capitalize + Strip",
-                            ]:
-                                st.text_input(
-                                    label='Enter character to strip',
-                                    value=' ',
-                                    key='col_name_strip_char' 
-                                )      
-                            st.button(
-                                label = "Apply Transformation", 
-                                on_click=apply_column_name_transformation
-                                )
-        
-                            if "column_name_transformation_msg" in st.session_state:
-                                st.success(st.session_state.pop('column_name_transformation_msg'))
-                            if 'apply_column_name_transformation_exception' in st.session_state:
-                                st.error(st.session_state.pop('apply_column_name_transformation_exception'))
+            st.subheader('Column Name', text_alignment = 'center')
+            correct_type = st.selectbox(
+                label='Select Correctness Type',
+                options=sorted(["Strip", "Capitalize", "Capitalize + Strip", "Left Strip", "Right Strip"]),
+                index=0,
+                key = 'col_name_correctness_type'
+            )
+            if correct_type in [
+                "Strip",
+                "Left Strip",
+                "Right Strip",
+                "Capitalize + Strip",
+            ]:
+                st.text_input(
+                    label='Enter character to strip (default: space)',
+                    value=' ',
+                    key='col_name_strip_char' 
+                )      
+            st.button(
+                label = "Apply Transformation", 
+                on_click=apply_column_name_transformation
+                )
+
+            if "column_name_transformation_msg" in st.session_state:
+                st.success(st.session_state.pop('column_name_transformation_msg'))
+            if 'apply_column_name_transformation_exception' in st.session_state:
+                st.error(st.session_state.pop('apply_column_name_transformation_exception'))
         
         with clm_correct_nm_col2:
-                            st.subheader('Column Values', text_alignment = 'center')
-                            columns = data.columns.tolist()
-                            if len(columns) == 0:
-                                st.warning('No Columns found!')
-                            else:
-                                clmn = st.selectbox(
-                                    label = 'Select Column',
-                                    options = sorted(columns),
-                                    key = 'column_values_correctness'
-                                )
-                                correct_type = st.selectbox(
-                                    label='Select Correctness Type',
-                                    options=sorted(["Strip", "Capitalize", "Capitalize + Strip", "Left Strip", "Right Strip", 'Make all values equal', 'Change specific value(s)']),
-                                    index=0,
-                                    key = 'col_values_correctness_type'
-                                )
-                                if correct_type in [
-                                    "Strip",
-                                    "Left Strip",
-                                    "Right Strip",
-                                    "Capitalize + Strip",
-                                ]:
-                                    st.text_input(
-                                        label='Enter character to strip',
-                                        value=' ',
-                                        key='col_values_strip_char' 
-                                    ) 
-                                elif correct_type == 'Change specific value(s)':
-                                    old_val = st.text_input(
-                                        label = 'Enter old value',
-                                        key = 'old_value'
-                                    )
-                                    new_val = st.text_input(
-                                        label = 'Enter new value',
-                                        key = 'new_value'
-                                    )
-                                elif correct_type == 'Make all values equal':
-                                    new_val = st.text_input(
-                                        label = 'Enter new value',
-                                        key = 'new_value'
-                                    )
-        
-                                st.caption("*Note - Performing wrong operation on wrong datatype will not cause any error. Infact, it will show as operation completed.")
-        
-                                st.button(
-                                    label = 'Apply Changes',
-                                    on_click = apply_column_values_transformation
-                                )
-        
-                                if "column_values_transformation_msg" in st.session_state:
-                                    st.success(st.session_state.pop('column_values_transformation_msg'))
-                                if "apply_column_values_transformation_exception" in st.session_state:
-                                    st.success(st.session_state.pop('apply_column_values_transformation_exception'))
+            st.subheader('Column Values', text_alignment = 'center')
+            columns = data.columns.tolist()
+            if len(columns) == 0:
+                st.warning('No Columns found!')
+            else:
+                clmn = st.selectbox(
+                    label = 'Select Column',
+                    options = sorted(columns),
+                    key = 'column_values_correctness'
+                )
+                correct_type = st.selectbox(
+                    label='Select Correctness Type',
+                    options=sorted(["Strip", "Capitalize", "Capitalize + Strip", "Left Strip", "Right Strip", 'Make all values equal', 'Change specific value(s)']),
+                    index=0,
+                    key = 'col_values_correctness_type'
+                )
+                if correct_type in [
+                    "Strip",
+                    "Left Strip",
+                    "Right Strip",
+                    "Capitalize + Strip",
+                ]:
+                    st.text_input(
+                        label='Enter character to strip',
+                        value=' ',
+                        key='col_values_strip_char' 
+                    ) 
+                elif correct_type == 'Change specific value(s)':
+                    old_val = st.text_input(
+                        label = 'Enter old value',
+                        key = 'old_value'
+                    )
+                    new_val = st.text_input(
+                        label = 'Enter new value',
+                        key = 'new_value'
+                    )
+                elif correct_type == 'Make all values equal':
+                    new_val = st.text_input(
+                        label = 'Enter new value',
+                        key = 'new_value'
+                    )
+
+                st.caption("*Note - Performing wrong operation on wrong datatype will not cause any error. Infact, it will show as operation completed.")
+
+                st.button(
+                    label = 'Apply Changes',
+                    on_click = apply_column_values_transformation
+                )
+
+                if "column_values_transformation_msg" in st.session_state:
+                    st.success(st.session_state.pop('column_values_transformation_msg'))
+                if "apply_column_values_transformation_exception" in st.session_state:
+                    st.success(st.session_state.pop('apply_column_values_transformation_exception'))
     except Exception:
         st.session_state.columns_handling_exception = 'An unknown error occured!'
 
@@ -894,7 +818,7 @@ def dataset_description():
 
         df = st.session_state.get('file_uploaded').copy()
 
-        num_tab, cat_tab = st.tabs(["Numerical Columns", "Categorical Columns"])
+        num_tab, cat_tab, dt_tab, bool_tab = st.tabs(["Numerical Columns", "Categorical Columns", "Datetime Columns", "Boolean Columns"])
 
         with num_tab:
             num_df = df.select_dtypes(include = 'number')
@@ -911,14 +835,114 @@ def dataset_description():
                 st.warning('No Columns found!')
             else:
                 st.dataframe(cat_df.describe())
+        with dt_tab:
+            dt_df = df.select_dtypes(include = ['datetime', 'datetimetz', 'timedelta'])
+
+            if dt_df.empty:
+                st.warning('No Columns found!')
+            else:
+                st.dataframe(dt_df.describe())
+        with bool_tab:
+            bool_df = df.select_dtypes(include = ['bool', 'boolean'])
+
+            if bool_df.empty:
+                st.warning('No Columns found!')
+            else:
+                st.dataframe(bool_df.describe())
     except Exception:
         st.error("An error occured while displaying description of the data!")
 
+def del_rows_num():
+    df = st.session_state.get('file_uploaded').copy()
+    col = st.session_state.get('col_for_row_deletion')
+    condition = st.session_state.get('condition_for_row_deletion_num')
+    value = st.session_state.get('condition_value_for_row_deletion_num')
+    if condition == '<' :
+        df = df[~(df[col] < value)].copy()
+    elif condition == '<=' :
+        df = df[~(df[col] <= value)].copy()
+    elif condition == '>=' :
+        df = df[~(df[col] >= value)].copy()
+    elif condition == '>' :
+        df = df[~(df[col] > value)].copy()
+    elif condition == '==' :
+        df = df[~(df[col] == value)].copy()
+    elif condition == '!=' :
+        df = df[~(df[col] != value)].copy()
+
+    update_active_dataset(df)
+
+    st.session_state.rows_deletion_message = 'Rows Deleted Successfully!'
+
+def del_rows_cat():
+    df = st.session_state.get('file_uploaded').copy()
+
+    col = st.session_state.get('col_for_row_deletion')
+    condition = st.session_state.get('condition_for_row_deletion_cat')
+    value = st.session_state.get('condition_value_for_row_deletion_cat')
+
+    series = df[col].astype('string').str.strip().str.lower()
+    value = str(value).strip().lower()
+
+    if condition == '==':
+        df = df[series != value].copy()
+
+    elif condition == '!=':
+        df = df[series == value].copy()
+
+    update_active_dataset(df)
+
+    st.session_state.rows_deletion_message = 'Rows Deleted Successfully!'
+
+def del_rows_dt():
+    df = st.session_state.get('file_uploaded').copy()
+
+    col = st.session_state.get('col_for_row_deletion')
+    condition = st.session_state.get('condition_for_row_deletion_dt')
+    value = pd.to_datetime(st.session_state.get('condition_value_for_row_deletion_dt'))
+
+    series = pd.to_datetime(df[col], errors='coerce')
+
+    if condition == '==':
+        df = df[series != value].copy()
+    elif condition == '!=':
+        df = df[series == value].copy()
+    elif condition == '<':
+        df = df[~(series < value)].copy()
+    elif condition == '<=':
+        df = df[~(series <= value)].copy()
+    elif condition == '>':
+        df = df[~(series > value)].copy()
+    elif condition == '>=':
+        df = df[~(series >= value)].copy()
+
+    update_active_dataset(df)
+
+    st.session_state.rows_deletion_message = 'Rows Deleted Successfully!'
+
+def del_rows_bool():
+    df = st.session_state.get('file_uploaded').copy()
+
+    col = st.session_state.get('col_for_row_deletion')
+    condition = st.session_state.get('condition_for_row_deletion_bool')
+    value = st.session_state.get('condition_value_for_row_deletion_bool')
+
+    if condition == '==':
+        df = df[df[col] != value].copy()
+
+    elif condition == '!=':
+        df = df[df[col] == value].copy()
+
+    update_active_dataset(df)
+
+    st.session_state.rows_deletion_message = 'Rows Deleted Successfully!'
+
+@st.fragment
 def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_col_with_null_values, bool_col_with_null_values):
     try:
         st.subheader("Data Values Handling", text_alignment = 'center')
 
-        missing, duplicate, outliers = st.columns(3, border = True)
+        missing, duplicate, outliers, rows = st.columns(4, border = True)
 
         df = st.session_state.get('file_uploaded').copy()
 
@@ -927,339 +951,448 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
             return
 
         with missing:
-                        remove, fill = st.tabs(['Remove Null Values', "Fill Null Values"])
+            st.subheader("Null Values")
+            remove, fill = st.tabs(['Remove Null Values', "Fill Null Values"])
 
-                        with remove:
-                            if df.isnull().sum().sum() > 0:
-                                    col_with_null_values = [col for col in df if df[col].isnull().sum() > 0]
-                                    if len(col_with_null_values) > 0:
-                                        column = st.selectbox(
-                                            label = 'Select Column(s):',
-                                            options = sorted(col_with_null_values),
-                                            index = 0,
-                                            key = 'remove_null_column'
-                                        )
-                                        st.button(
-                                            label="Remove Null",
-                                            key="remove_null_bt",
-                                            on_click=remove_null_values
-                                        )
+            with remove:
+                if df.isnull().sum().sum() > 0:
+                        col_with_null_values = [col for col in df if df[col].isnull().sum() > 0]
+                        if len(col_with_null_values) > 0:
+                            column = st.selectbox(
+                                label = 'Select Column(s):',
+                                options = sorted(col_with_null_values),
+                                index = 0,
+                                key = 'remove_null_column'
+                            )
+                            st.button(
+                                label="Remove Null",
+                                key="remove_null_bt",
+                                on_click=remove_null_values
+                            )
 
-                                        if st.session_state.get("null_removal_message"):
-                                            st.success(st.session_state.pop('null_removal_message'))
-                                        if st.session_state.get("null_removal_exception"):
-                                            st.success(st.session_state.pop('null_removal_exception'))
-                                    else:
-                                        st.warning('No columns with null values found!')
-                            else:
-                                st.warning('No null values found')
+                            if st.session_state.get("null_removal_message"):
+                                st.success(st.session_state.pop('null_removal_message'))
+                            if st.session_state.get("null_removal_exception"):
+                                st.success(st.session_state.pop('null_removal_exception'))
+                        else:
+                            st.warning('No columns with null values found!')
+                else:
+                    st.warning('No null values found')
 
-                        with fill:
-                            if st.session_state.get('file_uploaded').isnull().sum().sum() > 0:
-                                column_type = st.selectbox(
-                                    label = 'Select Column Type',
-                                    options = ['Categorical', 'Numerical', 'Datetime', 'Boolean'],
+            with fill:
+                if st.session_state.get('file_uploaded').isnull().sum().sum() > 0:
+                    column_type = st.selectbox(
+                        label = 'Select Column Type',
+                        options = ['Categorical', 'Numerical', 'Datetime', 'Boolean'],
+                        index = 0,
+                        key = 'fill_null_column_type'
+                    )
+                    if column_type == 'Categorical':
+                            if len(cat_col_with_null_values) > 0:
+                                column = st.selectbox(
+                                    label = ' Select column',
+                                    options = sorted(cat_col_with_null_values),
                                     index = 0,
-                                    key = 'fill_null_column_type'
+                                    key = 'fill_null_column_cat'
                                 )
-                                if column_type == 'Categorical':
-                                        if len(cat_col_with_null_values) > 0:
-                                            column = st.selectbox(
-                                                label = ' Select column',
-                                                options = sorted(cat_col_with_null_values),
-                                                index = 0,
-                                                key = 'fill_null_column_cat'
-                                            )
 
-                                            if column != 'All':
-                                                st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_cat')].isnull().sum()}")
+                                if column != 'All':
+                                    st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_cat')].isnull().sum()}")
 
-                                            null_fill_mode = st.selectbox(
-                                                label = 'Select mode',
-                                                options = sorted(['Mode', 'Forward Fill', 'Backward Fill']),
-                                                index = 0,
-                                                key = 'fill_null_mode_cat'
-                                            )
-                                            st.button(
-                                                label = 'Fill Null Values',
-                                                key = 'fill_null_bt',
-                                                on_click = fill_null_values
-                                            )
-                                        else:
-                                            st.warning('No Categorical Column containing Null Values found!')
-                                        if st.session_state.get('null_fill_message'):
-                                                st.success(st.session_state.pop('null_fill_message'))
-                                        if 'null_filling_exception' in st.session_state:
-                                            st.error(st.session_state.pop('null_filling_exception'))
-
-                                elif column_type == 'Numerical':
-                                        if len(num_col_with_null_values) > 0:
-                                            column = st.selectbox(
-                                                label = ' Select column',
-                                                options = sorted(num_col_with_null_values),
-                                                index = 0,
-                                                key = 'fill_null_column_num'
-                                            )
-                                            if column != 'All':
-                                                st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_num')].isnull().sum()}")
-                                            null_fill_mode = st.selectbox(
-                                                label = 'Select mode',
-                                                options = sorted(['Mean', 'Median']),
-                                                index = 0,
-                                                key = 'fill_null_mode_num'
-                                            )
-                                            st.button(
-                                                label = 'Fill Null Values',
-                                                key = 'fill_null_bt',
-                                                on_click = fill_null_values
-                                            )
-                                        else:
-                                            st.warning('No Numerical Column containing Null Values found!')
-                                        if st.session_state.get('null_fill_message'):
-                                            st.success(st.session_state.pop('null_fill_message'))
-                                        if 'null_filling_exception' in st.session_state:
-                                            st.error(st.session_state.pop('null_filling_exception'))
-
-                                elif column_type == 'Datetime':
-                                        if len(dt_col_with_null_values) > 0:
-                                            column = st.selectbox(
-                                                label = 'Select Column',
-                                                options = sorted(dt_col_with_null_values),
-                                                index = 0,
-                                                key = 'fill_null_column_dt'
-                                            )
-                                            if column != 'All':
-                                                st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_dt')].isnull().sum()}")
-                                            mode = st.selectbox(
-                                                label = 'Select mode',
-                                                options = sorted(['Forward Fill', 'Backward Fill', 'Mode']),
-                                                index = 0,
-                                                key = 'fill_null_mode_dt'
-                                            )
-                                            st.button(
-                                                label = 'Fill Null Values',
-                                                key = 'fill_null_bt',
-                                                on_click = fill_null_values
-                                            )
-                                        else:
-                                            st.warning('No Datetime Column containing Null Values found!')
-                                        if st.session_state.get('null_fill_message'):
-                                            st.success(st.session_state.pop('null_fill_message'))
-                                        if 'null_filling_exception' in st.session_state:
-                                            st.error(st.session_state.pop('null_filling_exception'))
-                                elif column_type == 'Boolean':
-                                        if len(bool_col_with_null_values) > 0:
-                                            column = st.selectbox(
-                                                label = 'Select Column',
-                                                options = sorted(bool_col_with_null_values),
-                                                index = 0,
-                                                key = 'fill_null_column_bool'
-                                            )
-                                            if column != 'All':
-                                                st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_bool')].isnull().sum()}")
-                                            null_fill_mode = st.selectbox(
-                                                label = 'Select mode',
-                                                options = sorted(['Forward Fill', 'Backward Fill', 'Mode']),
-                                                index = 0,
-                                                key = 'fill_null_mode_bool'
-                                            )
-                                            st.button(
-                                                label = 'Fill Null Values',
-                                                key = 'fill_null_bt',
-                                                on_click = fill_null_values
-                                            )
-                                        else:
-                                            st.warning('No Boolean Column containing Null Values found!')
-                                        if st.session_state.get('null_fill_message'):
-                                                st.success(st.session_state.pop('null_fill_message'))
-                                        if 'null_filling_exception' in st.session_state:
-                                            st.error(st.session_state.pop('null_filling_exception'))
+                                null_fill_mode = st.selectbox(
+                                    label = 'Select mode',
+                                    options = sorted(['Mode', 'Forward Fill', 'Backward Fill']),
+                                    index = 0,
+                                    key = 'fill_null_mode_cat'
+                                )
+                                st.button(
+                                    label = 'Fill Null Values',
+                                    key = 'fill_null_bt',
+                                    on_click = fill_null_values
+                                )
                             else:
-                                st.warning('No null values found')
+                                st.warning('No Categorical Column containing Null Values found!')
+                            if st.session_state.get('null_fill_message'):
+                                    st.success(st.session_state.pop('null_fill_message'))
+                            if 'null_filling_exception' in st.session_state:
+                                st.error(st.session_state.pop('null_filling_exception'))
+
+                    elif column_type == 'Numerical':
+                            if len(num_col_with_null_values) > 0:
+                                column = st.selectbox(
+                                    label = ' Select column',
+                                    options = sorted(num_col_with_null_values),
+                                    index = 0,
+                                    key = 'fill_null_column_num'
+                                )
+                                if column != 'All':
+                                    st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_num')].isnull().sum()}")
+                                null_fill_mode = st.selectbox(
+                                    label = 'Select mode',
+                                    options = sorted(['Mean', 'Median']),
+                                    index = 0,
+                                    key = 'fill_null_mode_num'
+                                )
+                                st.button(
+                                    label = 'Fill Null Values',
+                                    key = 'fill_null_bt',
+                                    on_click = fill_null_values
+                                )
+                            else:
+                                st.warning('No Numerical Column containing Null Values found!')
+                            if st.session_state.get('null_fill_message'):
+                                st.success(st.session_state.pop('null_fill_message'))
+                            if 'null_filling_exception' in st.session_state:
+                                st.error(st.session_state.pop('null_filling_exception'))
+
+                    elif column_type == 'Datetime':
+                            if len(dt_col_with_null_values) > 0:
+                                column = st.selectbox(
+                                    label = 'Select Column',
+                                    options = sorted(dt_col_with_null_values),
+                                    index = 0,
+                                    key = 'fill_null_column_dt'
+                                )
+                                if column != 'All':
+                                    st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_dt')].isnull().sum()}")
+                                mode = st.selectbox(
+                                    label = 'Select mode',
+                                    options = sorted(['Forward Fill', 'Backward Fill', 'Mode']),
+                                    index = 0,
+                                    key = 'fill_null_mode_dt'
+                                )
+                                st.button(
+                                    label = 'Fill Null Values',
+                                    key = 'fill_null_bt',
+                                    on_click = fill_null_values
+                                )
+                            else:
+                                st.warning('No Datetime Column containing Null Values found!')
+                            if st.session_state.get('null_fill_message'):
+                                st.success(st.session_state.pop('null_fill_message'))
+                            if 'null_filling_exception' in st.session_state:
+                                st.error(st.session_state.pop('null_filling_exception'))
+                    elif column_type == 'Boolean':
+                            if len(bool_col_with_null_values) > 0:
+                                column = st.selectbox(
+                                    label = 'Select Column',
+                                    options = sorted(bool_col_with_null_values),
+                                    index = 0,
+                                    key = 'fill_null_column_bool'
+                                )
+                                if column != 'All':
+                                    st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_bool')].isnull().sum()}")
+                                null_fill_mode = st.selectbox(
+                                    label = 'Select mode',
+                                    options = sorted(['Forward Fill', 'Backward Fill', 'Mode']),
+                                    index = 0,
+                                    key = 'fill_null_mode_bool'
+                                )
+                                st.button(
+                                    label = 'Fill Null Values',
+                                    key = 'fill_null_bt',
+                                    on_click = fill_null_values
+                                )
+                            else:
+                                st.warning('No Boolean Column containing Null Values found!')
+                            if st.session_state.get('null_fill_message'):
+                                    st.success(st.session_state.pop('null_fill_message'))
+                            if 'null_filling_exception' in st.session_state:
+                                st.error(st.session_state.pop('null_filling_exception'))
+                else:
+                    st.warning('No null values found')
 
         with duplicate:
-                        st.subheader('Duplicates Handling', text_alignment = 'center')
+            st.subheader('Duplicates', text_alignment = 'center')
 
-                        if (df.duplicated().sum() > 0):
-                            if len(df.columns) != 0:
-                                dup_rem_mode = st.selectbox(
-                                    label = 'Select duplicates removal type: ',
-                                    options = sorted(['Keep First', 'Keep Last', 'Remove All']),
-                                    index = 0,
-                                    key = 'dup_rem_type'
-                                    )
+            if (df.duplicated().sum() > 0):
+                if len(df.columns) != 0:
+                    dup_rem_mode = st.selectbox(
+                        label = 'Select duplicates removal type: ',
+                        options = sorted(['Keep First', 'Keep Last', 'Remove All']),
+                        index = 0,
+                        key = 'dup_rem_type'
+                        )
 
-                                st.button(
-                                    label = 'Apply Changes',
-                                    key = 'rem_dup_bt',
-                                    on_click = duplicates_removal
-                                    )
+                    st.button(
+                        label = 'Apply Changes',
+                        key = 'rem_dup_bt',
+                        on_click = duplicates_removal
+                        )
 
-                                if st.session_state.get('dup_rem_message'):
-                                    st.success(st.session_state.dup_rem_message)
-                                    st.session_state.dup_rem_message = None
-                                if 'duplicates_removal_exception' in st.session_state:
-                                    st.error(st.session_state.pop('duplicates_removal_exception'))
-                            else:
-                                st.warning('No Columns found!')
-                        else:
-                            st.warning('No null values found')
+                    if st.session_state.get('dup_rem_message'):
+                        st.success(st.session_state.dup_rem_message)
+                        st.session_state.dup_rem_message = None
+                    if 'duplicates_removal_exception' in st.session_state:
+                        st.error(st.session_state.pop('duplicates_removal_exception'))
+                else:
+                    st.warning('No Columns found!')
+            else:
+                st.warning('No null values found')
 
                 
         with outliers:
-                        try:
-                            st.subheader('Outliers Handling', text_alignment='center')
-                            df = st.session_state.file_uploaded
-                            num_col = df.select_dtypes(include='number').columns.tolist()
-                            if len(num_col) == 0:
-                                st.warning('No Numerical Columns found!')
+            try:
+                st.subheader('Outliers', text_alignment='center')
+                df = st.session_state.file_uploaded
+                num_col = df.select_dtypes(include='number').columns.tolist()
+                if len(num_col) == 0:
+                    st.warning('No Numerical Columns found!')
+                else:
+                    column_not_null_removed = [col for col in num_col if df[col].isnull().any()]
+                    if column_not_null_removed:
+                        st.warning(
+                            'Please handle missing values in all numerical columns '
+                            'before proceeding with outlier detection.'
+                        )
+                        with st.expander('View Columns with Missing Values'):
+                            for col in column_not_null_removed:
+                                st.write(f'{col}: {df[col].isnull().sum()} missing values')
+                        st.session_state.outlier_detection_done = False
+                        st.session_state.outlier_masks = {}
+                        st.session_state.outlier_limits = {}
+                        st.session_state.outlier_data_snapshot = None
+                    else:
+                        st.selectbox(
+                            label='Select Outlier Detection Method',
+                            options=['IQR', 'Z-Score'],
+                            key='outlier_detection_method'
+                        )
+                        if st.button('Detect Outliers', key='outliers_detection_bt'):
+                            outlier_masks = {}
+                            outlier_limits = {}
+                            for col in num_col:
+                                if st.session_state.outlier_detection_method == 'IQR':
+                                    q1 = df[col].quantile(0.25)
+                                    q3 = df[col].quantile(0.75)
+                                    iqr = q3 - q1
+                                    lower_limit = q1 - 1.5 * iqr
+                                    upper_limit = q3 + 1.5 * iqr
+                                else:
+                                    mean_value = df[col].mean()
+                                    std_value = df[col].std(ddof=0)
+                                    if std_value == 0:
+                                        continue
+                                    lower_limit = mean_value - 3 * std_value
+                                    upper_limit = mean_value + 3 * std_value
+                                outlier_mask = (
+                                    (df[col] < lower_limit) |
+                                    (df[col] > upper_limit)
+                                )
+                                if outlier_mask.any():
+                                    outlier_masks[col] = outlier_mask
+                                    outlier_limits[col] = lower_limit, upper_limit
+                            st.session_state.outlier_masks = outlier_masks
+                            st.session_state.outlier_limits = outlier_limits
+                            st.session_state.outlier_detection_done = True
+                            st.session_state.outlier_data_snapshot = df.copy()
+                            st.session_state.outlier_detection_method_used = st.session_state.outlier_detection_method
+                        if st.session_state.get('outlier_detection_done', False):
+                            snapshot = st.session_state.get('outlier_data_snapshot')
+                            if (
+                                snapshot is None
+                                or not snapshot.equals(df)
+                                or st.session_state.get(
+                                    'outlier_detection_method_used'
+                                ) != st.session_state.outlier_detection_method
+                            ):
+                                st.session_state.outlier_detection_done = False
+                                st.session_state.outlier_masks = {}
+                                st.session_state.outlier_limits = {}
+                                st.session_state.outlier_data_snapshot = None
+                                st.info(
+                                    'Dataset or detection method changed. '
+                                    'Please detect outliers again.'
+                                )
+                        if st.session_state.get('outlier_detection_done', False):
+                            outlier_masks = st.session_state.outlier_masks
+                            if len(outlier_masks) == 0:
+                                st.info(
+                                    'No Outliers detected in the Numerical Columns!'
+                                )
                             else:
-                                column_not_null_removed = [col for col in num_col if df[col].isnull().any()]
-                                if column_not_null_removed:
-                                    st.warning(
-                                        'Please handle missing values in all numerical columns '
-                                        'before proceeding with outlier detection.'
+                                st.write('**Detected Outliers**')
+                                for col, mask in outlier_masks.items():
+                                    st.write(f'{col}: {int(mask.sum())} outliers')
+                                selected_col = st.selectbox(
+                                    label='Select Column',
+                                    options=list(outlier_masks.keys()),
+                                    key='outlier_handling_column'
+                                )
+                                technique = st.selectbox(
+                                    label='Select Method to handle Outliers',
+                                    options=[
+                                        'Remove',
+                                        'Replace with Upper and Lower Limits',
+                                        'Replace with a Specific Value'
+                                    ],
+                                    key='out_rem_method'
+                                )
+                                if technique == 'Replace with a Specific Value':
+                                    value_type = st.selectbox(
+                                        label='Select Value Type',
+                                        options=['Mean', 'Median', 'Constant'],
+                                        key='out_filling_val'
                                     )
-                                    with st.expander('View Columns with Missing Values'):
-                                        for col in column_not_null_removed:
-                                            st.write(f'{col}: {df[col].isnull().sum()} missing values')
+                                    if value_type == 'Constant':
+                                        constant_value = st.number_input(
+                                            label='Enter Number',
+                                            value=0.0,
+                                            key='out_filling_constant_value'
+                                        )
+                                if st.button(
+                                    'Apply Outlier Handling',
+                                    key='out_rem_bt'
+                                ):
+                                    updated_df = df.copy()
+                                    mask = outlier_masks[selected_col]
+                                    if technique == 'Remove':
+                                        updated_df = updated_df.loc[~mask].copy()
+                                    elif technique == 'Replace with Upper and Lower Limits':
+                                        lower_limit, upper_limit = (
+                                            st.session_state.outlier_limits[selected_col]
+                                        )
+                                        updated_df[selected_col] = (
+                                            updated_df[selected_col].clip(
+                                                lower=lower_limit,
+                                                upper=upper_limit
+                                            )
+                                        )
+                                    else:
+                                        values = updated_df[selected_col]
+                                        inliers = values.loc[~mask]
+                                        if value_type == 'Mean':
+                                            replacement_value = inliers.mean()
+                                        elif value_type == 'Median':
+                                            replacement_value = inliers.median()
+                                        else:
+                                            replacement_value = constant_value
+                                        if pd.isna(replacement_value):
+                                            st.error(
+                                                'Cannot calculate the replacement value.'
+                                            )
+                                            st.stop()
+                                        updated_df.loc[
+                                            mask, selected_col
+                                        ] = replacement_value
+                                    update_active_dataset(updated_df)
                                     st.session_state.outlier_detection_done = False
                                     st.session_state.outlier_masks = {}
                                     st.session_state.outlier_limits = {}
                                     st.session_state.outlier_data_snapshot = None
-                                else:
-                                    st.selectbox(
-                                        label='Select Outlier Detection Method',
-                                        options=['IQR', 'Z-Score'],
-                                        key='outlier_detection_method'
-                                    )
-                                    if st.button('Detect Outliers', key='outliers_detection_bt'):
-                                        outlier_masks = {}
-                                        outlier_limits = {}
-                                        for col in num_col:
-                                            if st.session_state.outlier_detection_method == 'IQR':
-                                                q1 = df[col].quantile(0.25)
-                                                q3 = df[col].quantile(0.75)
-                                                iqr = q3 - q1
-                                                lower_limit = q1 - 1.5 * iqr
-                                                upper_limit = q3 + 1.5 * iqr
-                                            else:
-                                                mean_value = df[col].mean()
-                                                std_value = df[col].std(ddof=0)
-                                                if std_value == 0:
-                                                    continue
-                                                lower_limit = mean_value - 3 * std_value
-                                                upper_limit = mean_value + 3 * std_value
-                                            outlier_mask = (
-                                                (df[col] < lower_limit) |
-                                                (df[col] > upper_limit)
-                                            )
-                                            if outlier_mask.any():
-                                                outlier_masks[col] = outlier_mask
-                                                outlier_limits[col] = lower_limit, upper_limit
-                                        st.session_state.outlier_masks = outlier_masks
-                                        st.session_state.outlier_limits = outlier_limits
-                                        st.session_state.outlier_detection_done = True
-                                        st.session_state.outlier_data_snapshot = df.copy()
-                                        st.session_state.outlier_detection_method_used = st.session_state.outlier_detection_method
-                                    if st.session_state.get('outlier_detection_done', False):
-                                        snapshot = st.session_state.get('outlier_data_snapshot')
-                                        if (
-                                            snapshot is None
-                                            or not snapshot.equals(df)
-                                            or st.session_state.get(
-                                                'outlier_detection_method_used'
-                                            ) != st.session_state.outlier_detection_method
-                                        ):
-                                            st.session_state.outlier_detection_done = False
-                                            st.session_state.outlier_masks = {}
-                                            st.session_state.outlier_limits = {}
-                                            st.session_state.outlier_data_snapshot = None
-                                            st.info(
-                                                'Dataset or detection method changed. '
-                                                'Please detect outliers again.'
-                                            )
-                                    if st.session_state.get('outlier_detection_done', False):
-                                        outlier_masks = st.session_state.outlier_masks
-                                        if len(outlier_masks) == 0:
-                                            st.info(
-                                                'No Outliers detected in the Numerical Columns!'
-                                            )
-                                        else:
-                                            st.write('**Detected Outliers**')
-                                            for col, mask in outlier_masks.items():
-                                                st.write(f'{col}: {int(mask.sum())} outliers')
-                                            selected_col = st.selectbox(
-                                                label='Select Column',
-                                                options=list(outlier_masks.keys()),
-                                                key='outlier_handling_column'
-                                            )
-                                            technique = st.selectbox(
-                                                label='Select Method to handle Outliers',
-                                                options=[
-                                                    'Remove',
-                                                    'Replace with Upper and Lower Limits',
-                                                    'Replace with a Specific Value'
-                                                ],
-                                                key='out_rem_method'
-                                            )
-                                            if technique == 'Replace with a Specific Value':
-                                                value_type = st.selectbox(
-                                                    label='Select Value Type',
-                                                    options=['Mean', 'Median', 'Constant'],
-                                                    key='out_filling_val'
-                                                )
-                                                if value_type == 'Constant':
-                                                    constant_value = st.number_input(
-                                                        label='Enter Number',
-                                                        value=0.0,
-                                                        key='out_filling_constant_value'
-                                                    )
-                                            if st.button(
-                                                'Apply Outlier Handling',
-                                                key='out_rem_bt'
-                                            ):
-                                                updated_df = df.copy()
-                                                mask = outlier_masks[selected_col]
-                                                if technique == 'Remove':
-                                                    updated_df = updated_df.loc[~mask].copy()
-                                                elif technique == 'Replace with Upper and Lower Limits':
-                                                    lower_limit, upper_limit = (
-                                                        st.session_state.outlier_limits[selected_col]
-                                                    )
-                                                    updated_df[selected_col] = (
-                                                        updated_df[selected_col].clip(
-                                                            lower=lower_limit,
-                                                            upper=upper_limit
-                                                        )
-                                                    )
-                                                else:
-                                                    values = updated_df[selected_col]
-                                                    inliers = values.loc[~mask]
-                                                    if value_type == 'Mean':
-                                                        replacement_value = inliers.mean()
-                                                    elif value_type == 'Median':
-                                                        replacement_value = inliers.median()
-                                                    else:
-                                                        replacement_value = constant_value
-                                                    if pd.isna(replacement_value):
-                                                        st.error(
-                                                            'Cannot calculate the replacement value.'
-                                                        )
-                                                        st.stop()
-                                                    updated_df.loc[
-                                                        mask, selected_col
-                                                    ] = replacement_value
-                                                update_active_dataset(updated_df)
-                                                st.session_state.outlier_detection_done = False
-                                                st.session_state.outlier_masks = {}
-                                                st.session_state.outlier_limits = {}
-                                                st.session_state.outlier_data_snapshot = None
 
-                                                st.session_state.outliers_handling_message = 'Outlier handling applied successfully!'
-                                                st.success(st.session_state.pop('outliers_handling_message'))
-                        except Exception as e:
-                            st.error(f"An Unknown error occured: {e}")
+                                    st.session_state.outliers_handling_message = 'Outlier handling applied successfully!'
+                                    st.success(st.session_state.pop('outliers_handling_message'))
+            except Exception as e:
+                st.error(f"An Unknown error occured: {e}")
+        with rows:
+            try:
+                df = st.session_state.get('file_uploaded')
+                st.subheader("Rows Deletion", text_alignment='center')
+                st.selectbox(
+                    label = 'Select Column Type',
+                    options = sorted(['Categorical', 'Numerical', 'Datetime', 'Boolean']),
+                    key = 'col_type_for_row_deletion'
+                )
+                col_type = st.session_state.get('col_type_for_row_deletion')
+                cat_col = _get_cat_col(df)
+                num_col = _get_num_col(df)
+                dt_col = _get_datetime_col(df)
+                bool_col = _get_bool_col(df)
+                st.selectbox(
+                    label = 'Select Column',
+                    options = cat_col if col_type == 'Categorical' else num_col if col_type == 'Numerical' else dt_col if col_type == 'Datetime' else bool_col,
+                    index = 0,
+                    key = 'col_for_row_deletion'
+                )
+                if col_type == 'Numerical':
+                    if len(num_col) > 0:
+                        st.selectbox(
+                            label = "Delete rows where value is ",
+                            options = ['<', '>', '<=', '>=', '==', '!='],
+                            key = 'condition_for_row_deletion_num'
+                        )
+                        st.number_input(
+                            label = '',
+                            key = 'condition_value_for_row_deletion_num'
+                        )
+                        st.button(
+                            label = 'Delete Rows',
+                            key = 'delete_rows_bt_num',
+                            on_click = del_rows_num
+                        )
+
+                        if 'rows_deletion_message' in st.session_state:
+                            st.success(st.session_state.pop('rows_deletion_message'))
+                    else:
+                        st.warning("No Numerical Columns found!")
+                elif col_type == 'Categorical':
+                    if len(cat_col) > 0:
+                        st.selectbox(
+                            label = "Delete rows where value is ",
+                            options = ['==', '!='],
+                            key = 'condition_for_row_deletion_cat'
+                        )
+                        st.text_input(
+                            label = '',
+                            key = 'condition_value_for_row_deletion_cat'
+                        )
+                        st.button(
+                            label = 'Delete Rows',
+                            key = 'delete_rows_bt_cat',
+                            on_click = del_rows_cat
+                        )
+                        if 'rows_deletion_message' in st.session_state:
+                            st.success(st.session_state.pop('rows_deletion_message'))
+                    else:
+                        st.warning("No Categorical Columns found!")
+                elif col_type == 'Datetime':
+                    if len(dt_col) > 0:
+                        st.selectbox(
+                            label = "Delete rows where value is ",
+                            options = ['<', '>', '<=', '>=', '==', '!='],
+                            key = 'condition_for_row_deletion_dt'
+                        )
+                        st.datetime_input(
+                            label = '',
+                            value = 'now'
+                        )
+                        st.button(
+                            label = 'Delete Rows',
+                            key = 'delete_rows_bt_dt',
+                            on_click = del_rows_dt
+                        )
+                        if 'rows_deletion_message' in st.session_state:
+                            st.success(st.session_state.pop('rows_deletion_message'))
+                    else:
+                        st.warning("No Datetime Columns found!")
+                elif col_type == 'Boolean':
+                    if len(bool_col) > 0:
+                        st.selectbox(
+                            label = "Delete rows where value is ",
+                            options = ['==', '!='],
+                            key = 'condition_for_row_deletion_cat'
+                        )
+                        st.text_input(
+                            label = '',
+                            key = 'condition_value_for_row_deletion_cat'
+                        )
+                        st.button(
+                            label = 'Delete Rows',
+                            key = 'delete_rows_bt_bool',
+                            on_click = del_rows_bool
+                        )
+                        if 'rows_deletion_message' in st.session_state:
+                            st.success(st.session_state.pop('rows_deletion_message'))
+                    else:
+                        st.warning("No Boolean Columns found!")
+                
+            except Exception as err:
+                st.exception(f"An error occured: {err}")
+        st.button(
+            label = "Refresh Data",
+            on_click = refresh_data
+            )
     except Exception:
         st.error("An unknown error occured!")
 
@@ -1294,7 +1427,7 @@ def file_uploader_show():
                 st.error("An error occured while reading the file!")
             else:
                 if "loaded_file_name" not in st.session_state or (
-                    st.session_state.loaded_file_name != upload_file.name
+                    st.session_state.get('loaded_file_name') != upload_file.name
                 ):
                     st.session_state.original_file = df.copy()
                     st.session_state.file_uploaded = df.copy()
@@ -1457,9 +1590,7 @@ def file_uploader_show():
 
                 data_preview()
 
-                dtype_col, clm_correct_dtype_col = st.columns(2, border = True)
-
-                dtype_detection_changing(dtype_col, clm_correct_dtype_col)
+                dtype_detection_changing()
 
                 data_format_handling()
 

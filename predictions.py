@@ -394,11 +394,15 @@ def predictions_show():
 
             prediction = model.predict(input_df)
 
-            st.snow()
+            target_variable = st.session_state.get('target_variable')
+            target_mapping = st.session_state.get('categorical_mapping', {}).get(target_variable, {})
+            inverse_mapping = {value: key for key, value in target_mapping.items()}
+
+            display_prediction = inverse_mapping.get(prediction[0], prediction[0])
 
             with st.container(border = True):
                 st.markdown('## Prediction Result', text_alignment = 'center')
-                st.markdown(f"### Predicted {st.session_state.get('target_variable')} : {prediction[0]}")
+                st.markdown(f"### Predicted {target_variable} : {display_prediction}")
 
             if hasattr(model, 'predict_proba'):
                     probabilities = model.predict_proba(input_df)[0]
@@ -413,6 +417,13 @@ def predictions_show():
                     classes = _get_model_classes(model)
 
                     if classes is not None:
+                        target_encoder = st.session_state.get('target_encoder')
+
+                        if target_encoder is not None:
+                            classes = target_encoder.inverse_transform(
+                                classes.astype(int)
+                            )
+
                         probability_df = pd.DataFrame({
                             'Class': classes,
                             'Probability': probabilities

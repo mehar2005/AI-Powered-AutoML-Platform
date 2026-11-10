@@ -367,8 +367,8 @@ def univariate_analysis(cat_col, num_col, bool_col):
                                             )
 
                                         st.plotly_chart(fig, width = 'stretch')
-            except Exception as err:
-                st.exception(err)
+            except Exception:
+                st.exception("An Unknown Error Occured!")
 
 @st.fragment
 def bivariate_analysis(cat_col, num_col, dt_col, bool_col):

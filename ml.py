@@ -1212,30 +1212,29 @@ def ml_show():
                     type = 'primary'
                 )
                 if apply_auto_tune:
-                    with st.spinner(
-                        text = 'Tuning Model'
-                    ):
-                        if st.session_state.get('models_tb_train') is None:
-                            st.warning("Train models first!")   
-                        else:                             
-                            st.session_state.auto_tune_applied = True
-                            models_for_tuning = st.session_state.get('models_for_tuning')
-                            target_var = st.session_state.get('target_variable')
+                    if st.session_state.get('models_tb_train') is None:
+                        st.warning("Train models first!")   
+                    else:                             
+                        st.session_state.auto_tune_applied = True
+                        models_for_tuning = st.session_state.get('models_for_tuning')
+                        target_var = st.session_state.get('target_variable')
 
-                            original_df = st.session_state.get('file_uploaded')
-                            X = st.session_state.get('model_df')
+                        original_df = st.session_state.get('file_uploaded')
+                        X = st.session_state.get('model_df')
 
-                            if X is None:
-                                X = original_df.drop(columns=[target_var]).copy()
-                            else:
-                                X = X.copy()
+                        if X is None:
+                            X = original_df.drop(columns=[target_var]).copy()
+                        else:
+                            X = X.copy()
 
-                            if X is not None and target_var is not None:
-                                y = original_df.loc[X.index, target_var].copy()
+                        if X is not None and target_var is not None:
+                            y = original_df.loc[X.index, target_var].copy()
 
-                                if len(X) != len(y):
-                                    raise ValueError("Features and target have different lengths!")
-                                
+                            if len(X) != len(y):
+                                raise ValueError("Features and target have different lengths!")
+
+                            with st.status("Tuning Models") as status:
+                            
                                 if 'Decision Tree Classifier' in models_for_tuning:
                                     tuneDTC(X, y)
                                 if 'KNN Classifier' in models_for_tuning:
@@ -1257,6 +1256,8 @@ def ml_show():
                                     tunePR(X, y)
                                 if 'Random Forest Regressor' in models_for_tuning:
                                     tuneRFR(X, y)
+
+                                status.update(label = 'Models Tuned Successfully!')
 
 
         regression_model_trained = st.session_state.get('regression_models_train_metrics_information')        
@@ -1338,7 +1339,7 @@ def ml_show():
 
                     master_df = pd.concat([classification_model_trained_df, classification_model_tested_df], axis = 1)
 
-                    st.dataframe(master_df.drop(columns = 'Modell').sort_values(by = 'F1 Test', ascending = False), hide_index = True)
+                    st.dataframe(master_df.drop(columns = ['Modell']).sort_values(by = 'F1 Test', ascending = False), hide_index = True)
 
                     models_dict = {
                         'lgr_model' : st.session_state.get('lgr_model'),
