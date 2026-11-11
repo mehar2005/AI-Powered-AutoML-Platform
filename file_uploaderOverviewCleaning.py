@@ -53,101 +53,76 @@ def fill_null_values():
         if column_type == 'Categorical':
             column = st.session_state.get('fill_null_column_cat')
             mode = st.session_state.get('fill_null_mode_cat')
-            if column == 'All':
-                columns = _get_cat_col(df)
+            col = column
+            if col in df.columns:
+                if df[col].isnull().sum() > 0:
+                    if mode == 'Mode':
+                        mode_values = df[col].mode()
+                        if not mode_values.empty:
+                            df[col] = df[col].fillna(mode_values[0])
+                    elif mode == 'Forward Fill':
+                        df[col] = df[col].ffill()
+                    elif mode == 'Backward Fill':
+                        df[col] = df[col].bfill()
             else:
-                columns = [column]
-
-            for col in columns:
-                if col in df.columns:
-                    if df[col].isnull().sum() > 0:
-                        if mode == 'Mode':
-                            mode_values = df[col].mode()
-                            if not mode_values.empty:
-                                df[col] = df[col].fillna(mode_values[0])
-                        elif mode == 'Forward Fill':
-                            df[col] = df[col].ffill()
-                        elif mode == 'Backward Fill':
-                            df[col] = df[col].bfill()
-                    else:
-                        continue
-                else:
-                    err_in_col = col
-                    raise ValueError(f'{err_in_col} column not found!')
+                err_in_col = col
+                raise ValueError(f'{err_in_col} column not found!')
 
         elif column_type == 'Numerical':
             column = st.session_state.get('fill_null_column_num')
             mode = st.session_state.get('fill_null_mode_num')
-            if column == 'All':
-                columns = _get_num_col(df)
+            col = column
+            if col in df.columns:
+                if df[col].isnull().sum() > 0:
+                    if mode == 'Mean':
+                        mean_value = df[col].mean()
+                        if pd.notna(mean_value):
+                            df[col] = df[col].fillna(mean_value)
+                    elif mode == 'Median':
+                        median_value = df[col].median()
+                        if pd.notna(median_value):
+                            df[col] = df[col].fillna(median_value)
+
             else:
-                columns = [column]
-            for col in columns:
-                if col in df.columns:
-                    if df[col].isnull().sum() > 0:
-                        if mode == 'Mean':
-                            mean_value = df[col].mean()
-                            if pd.notna(mean_value):
-                                df[col] = df[col].fillna(mean_value)
-                        elif mode == 'Median':
-                            median_value = df[col].median()
-                            if pd.notna(median_value):
-                                df[col] = df[col].fillna(median_value)
-                    else:
-                        continue
-                else:
-                    err_in_col = col
-                    raise ValueError(f'{err_in_col} column not found!')
+                err_in_col = col
+                raise ValueError(f'{err_in_col} column not found!')
 
         elif column_type == 'Datetime':
             column = st.session_state.get('fill_null_column_dt')
             mode = st.session_state.get('fill_null_mode_dt')
-            if column == 'All':
-                cols = _get_datetime_col(df)
-            else:
-                cols = [column]
+            col = column
 
-            for col in cols:
-                if col in df.columns:
-                    if df[col].isnull().sum() > 0:
-                        if mode == 'Forward Fill':
-                            df[col] = df[col].ffill()
-                        elif mode == 'Backward Fill':
-                            df[col] = df[col].bfill()
-                        elif mode == 'Mode':
-                            most_frequent_date = df[col].mode()
-                            if not most_frequent_date.empty:
-                                df[col] = df[col].fillna(most_frequent_date.iloc[0])
-                    else:
-                        continue
-                else:
-                    err_in_col = col
-                    raise ValueError(f'{err_in_col} column not found!')
+            if col in df.columns:
+                if df[col].isnull().sum() > 0:
+                    if mode == 'Forward Fill':
+                        df[col] = df[col].ffill()
+                    elif mode == 'Backward Fill':
+                        df[col] = df[col].bfill()
+                    elif mode == 'Mode':
+                        most_frequent_date = df[col].mode()
+                        if not most_frequent_date.empty:
+                            df[col] = df[col].fillna(most_frequent_date.iloc[0])
+            else:
+                err_in_col = col
+                raise ValueError(f'{err_in_col} column not found!')
             
         elif column_type == 'Boolean':
             column = st.session_state.get('fill_null_column_bool')
             mode = st.session_state.get('fill_null_mode_bool')
-            if column == 'All':
-                cols = _get_bool_col(df)
+            col = column
+            if col in df.columns:
+                if df[col].isnull().sum() > 0:
+                    if mode == 'Forward Fill':
+                        df[col] = df[col].ffill()
+                    elif mode == 'Backward Fill':
+                        df[col] = df[col].bfill()
+                    elif mode == 'Mode':
+                        mode_values = df[col].mode()
+                        if not mode_values.empty:
+                            df[col] = df[col].fillna(mode_values.iloc[0])
             else:
-                cols = [column]
-
-            for col in cols:
-                if col in df.columns:
-                    if df[col].isnull().sum() > 0:
-                        if mode == 'Forward Fill':
-                            df[col] = df[col].ffill()
-                        elif mode == 'Backward Fill':
-                            df[col] = df[col].bfill()
-                        elif mode == 'Mode':
-                            mode_values = df[col].mode()
-                            if not mode_values.empty:
-                                df[col] = df[col].fillna(mode_values.iloc[0])
-                    else:
-                        continue
-                else:
-                    err_in_col = col
-                    raise ValueError(f'{err_in_col} column not found!')
+                err_in_col = col
+                raise ValueError(f'{err_in_col} column not found!')
 
         update_active_dataset(df)
         st.session_state.null_fill_message = 'Null values filled successfully!'
@@ -938,13 +913,29 @@ def del_rows_bool():
     st.session_state.rows_deletion_message = 'Rows Deleted Successfully!'
 
 @st.fragment
-def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_col_with_null_values, bool_col_with_null_values):
+def data_values_handling():
     try:
         st.subheader("Data Values Handling", text_alignment = 'center')
 
         missing, duplicate, outliers, rows = st.columns(4, border = True)
 
         df = st.session_state.get('file_uploaded').copy()
+
+        num_col = sorted(df.select_dtypes(
+                include = 'number'
+            ).columns.tolist())
+        cat_col = sorted(df.select_dtypes(
+                include = ['object', 'string', 'category']
+            ).columns.tolist())
+        bool_col = sorted(df.select_dtypes(
+                include = ['boolean', 'bool']
+            ).columns.tolist())
+        dt_col = sorted([col for col in df.columns if pd.api.types.is_datetime64_any_dtype(df[col])])
+
+        cat_col_with_null_values = [col for col in cat_col if df[col].isnull().sum() > 0]
+        num_col_with_null_values = [col for col in num_col if df[col].isnull().sum() > 0]
+        dt_col_with_null_values = [col for col in dt_col if df[col].isnull().sum() > 0]
+        bool_col_with_null_values = [col for col in bool_col if df[col].isnull().sum() > 0]
 
         if not isinstance(df, pd.DataFrame):
             st.warning("Upload a dataset first!")
@@ -956,26 +947,26 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
 
             with remove:
                 if df.isnull().sum().sum() > 0:
-                        col_with_null_values = [col for col in df if df[col].isnull().sum() > 0]
-                        if len(col_with_null_values) > 0:
-                            column = st.selectbox(
-                                label = 'Select Column(s):',
-                                options = sorted(col_with_null_values),
-                                index = 0,
-                                key = 'remove_null_column'
-                            )
-                            st.button(
-                                label="Remove Null",
-                                key="remove_null_bt",
-                                on_click=remove_null_values
-                            )
+                    col_with_null_values = [col for col in df if df[col].isnull().sum() > 0]
+                    if len(col_with_null_values) > 0:
+                        column = st.selectbox(
+                            label = 'Select Column(s):',
+                            options = sorted(col_with_null_values),
+                            index = 0,
+                            key = 'remove_null_column'
+                        )
+                        st.button(
+                            label="Remove Null",
+                            key="remove_null_bt",
+                            on_click=remove_null_values
+                        )
 
-                            if st.session_state.get("null_removal_message"):
-                                st.success(st.session_state.pop('null_removal_message'))
-                            if st.session_state.get("null_removal_exception"):
-                                st.success(st.session_state.pop('null_removal_exception'))
-                        else:
-                            st.warning('No columns with null values found!')
+                        if st.session_state.get("null_removal_message"):
+                            st.success(st.session_state.pop('null_removal_message'))
+                        if st.session_state.get("null_removal_exception"):
+                            st.success(st.session_state.pop('null_removal_exception'))
+                    else:
+                        st.warning('No columns with null values found!')
                 else:
                     st.warning('No null values found')
 
@@ -988,125 +979,126 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
                         key = 'fill_null_column_type'
                     )
                     if column_type == 'Categorical':
-                            if len(cat_col_with_null_values) > 0:
-                                column = st.selectbox(
-                                    label = ' Select column',
-                                    options = sorted(cat_col_with_null_values),
-                                    index = 0,
-                                    key = 'fill_null_column_cat'
-                                )
+                        if len(cat_col_with_null_values) > 0:
+                            column = st.selectbox(
+                                label = ' Select column',
+                                options = sorted(cat_col_with_null_values),
+                                index = 0,
+                                key = 'fill_null_column_cat'
+                            )
 
-                                if column != 'All':
-                                    st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_cat')].isnull().sum()}")
 
-                                null_fill_mode = st.selectbox(
-                                    label = 'Select mode',
-                                    options = sorted(['Mode', 'Forward Fill', 'Backward Fill']),
-                                    index = 0,
-                                    key = 'fill_null_mode_cat'
-                                )
-                                st.button(
-                                    label = 'Fill Null Values',
-                                    key = 'fill_null_bt',
-                                    on_click = fill_null_values
-                                )
-                            else:
-                                st.warning('No Categorical Column containing Null Values found!')
-                            if st.session_state.get('null_fill_message'):
-                                    st.success(st.session_state.pop('null_fill_message'))
-                            if 'null_filling_exception' in st.session_state:
-                                st.error(st.session_state.pop('null_filling_exception'))
+                            if st.session_state.get('fill_null_column_cat') in df.columns:
+                                st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_cat')].isnull().sum()}")
+
+                            null_fill_mode = st.selectbox(
+                                label = 'Select mode',
+                                options = sorted(['Mode', 'Forward Fill', 'Backward Fill']),
+                                index = 0,
+                                key = 'fill_null_mode_cat'
+                            )
+                            st.button(
+                                label = 'Fill Null Values',
+                                key = 'fill_null_bt',
+                                on_click = fill_null_values
+                            )
+                        else:
+                            st.warning('No Categorical Column containing Null Values found!')
+                        if st.session_state.get('null_fill_message'):
+                                st.success(st.session_state.pop('null_fill_message'))
+                        if 'null_filling_exception' in st.session_state:
+                            st.error(st.session_state.pop('null_filling_exception'))
 
                     elif column_type == 'Numerical':
-                            if len(num_col_with_null_values) > 0:
-                                column = st.selectbox(
-                                    label = ' Select column',
-                                    options = sorted(num_col_with_null_values),
-                                    index = 0,
-                                    key = 'fill_null_column_num'
-                                )
-                                if column != 'All':
-                                    st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_num')].isnull().sum()}")
-                                null_fill_mode = st.selectbox(
-                                    label = 'Select mode',
-                                    options = sorted(['Mean', 'Median']),
-                                    index = 0,
-                                    key = 'fill_null_mode_num'
-                                )
-                                st.button(
-                                    label = 'Fill Null Values',
-                                    key = 'fill_null_bt',
-                                    on_click = fill_null_values
-                                )
-                            else:
-                                st.warning('No Numerical Column containing Null Values found!')
-                            if st.session_state.get('null_fill_message'):
-                                st.success(st.session_state.pop('null_fill_message'))
-                            if 'null_filling_exception' in st.session_state:
-                                st.error(st.session_state.pop('null_filling_exception'))
+                        if len(num_col_with_null_values) > 0:
+                            column = st.selectbox(
+                                label = ' Select column',
+                                options = sorted(num_col_with_null_values),
+                                index = 0,
+                                key = 'fill_null_column_num'
+                            )
+                            if column != 'All':
+                                st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_num')].isnull().sum()}")
+                            null_fill_mode = st.selectbox(
+                                label = 'Select mode',
+                                options = sorted(['Mean', 'Median']),
+                                index = 0,
+                                key = 'fill_null_mode_num'
+                            )
+                            st.button(
+                                label = 'Fill Null Values',
+                                key = 'fill_null_bt',
+                                on_click = fill_null_values
+                            )
+                        else:
+                            st.warning('No Numerical Column containing Null Values found!')
+                        if st.session_state.get('null_fill_message'):
+                            st.success(st.session_state.pop('null_fill_message'))
+                        if 'null_filling_exception' in st.session_state:
+                            st.error(st.session_state.pop('null_filling_exception'))
 
                     elif column_type == 'Datetime':
-                            if len(dt_col_with_null_values) > 0:
-                                column = st.selectbox(
-                                    label = 'Select Column',
-                                    options = sorted(dt_col_with_null_values),
-                                    index = 0,
-                                    key = 'fill_null_column_dt'
-                                )
-                                if column != 'All':
-                                    st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_dt')].isnull().sum()}")
-                                mode = st.selectbox(
-                                    label = 'Select mode',
-                                    options = sorted(['Forward Fill', 'Backward Fill', 'Mode']),
-                                    index = 0,
-                                    key = 'fill_null_mode_dt'
-                                )
-                                st.button(
-                                    label = 'Fill Null Values',
-                                    key = 'fill_null_bt',
-                                    on_click = fill_null_values
-                                )
-                            else:
-                                st.warning('No Datetime Column containing Null Values found!')
-                            if st.session_state.get('null_fill_message'):
-                                st.success(st.session_state.pop('null_fill_message'))
-                            if 'null_filling_exception' in st.session_state:
-                                st.error(st.session_state.pop('null_filling_exception'))
+                        if len(dt_col_with_null_values) > 0:
+                            column = st.selectbox(
+                                label = 'Select Column',
+                                options = sorted(dt_col_with_null_values),
+                                index = 0,
+                                key = 'fill_null_column_dt'
+                            )
+                            if column != 'All':
+                                st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_dt')].isnull().sum()}")
+                            mode = st.selectbox(
+                                label = 'Select mode',
+                                options = sorted(['Forward Fill', 'Backward Fill', 'Mode']),
+                                index = 0,
+                                key = 'fill_null_mode_dt'
+                            )
+                            st.button(
+                                label = 'Fill Null Values',
+                                key = 'fill_null_bt',
+                                on_click = fill_null_values
+                            )
+                        else:
+                            st.warning('No Datetime Column containing Null Values found!')
+                        if st.session_state.get('null_fill_message'):
+                            st.success(st.session_state.pop('null_fill_message'))
+                        if 'null_filling_exception' in st.session_state:
+                            st.error(st.session_state.pop('null_filling_exception'))
                     elif column_type == 'Boolean':
-                            if len(bool_col_with_null_values) > 0:
-                                column = st.selectbox(
-                                    label = 'Select Column',
-                                    options = sorted(bool_col_with_null_values),
-                                    index = 0,
-                                    key = 'fill_null_column_bool'
-                                )
-                                if column != 'All':
-                                    st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_bool')].isnull().sum()}")
-                                null_fill_mode = st.selectbox(
-                                    label = 'Select mode',
-                                    options = sorted(['Forward Fill', 'Backward Fill', 'Mode']),
-                                    index = 0,
-                                    key = 'fill_null_mode_bool'
-                                )
-                                st.button(
-                                    label = 'Fill Null Values',
-                                    key = 'fill_null_bt',
-                                    on_click = fill_null_values
-                                )
-                            else:
-                                st.warning('No Boolean Column containing Null Values found!')
-                            if st.session_state.get('null_fill_message'):
-                                    st.success(st.session_state.pop('null_fill_message'))
-                            if 'null_filling_exception' in st.session_state:
-                                st.error(st.session_state.pop('null_filling_exception'))
+                        if len(bool_col_with_null_values) > 0:
+                            column = st.selectbox(
+                                label = 'Select Column',
+                                options = sorted(bool_col_with_null_values),
+                                index = 0,
+                                key = 'fill_null_column_bool'
+                            )
+                            if column != 'All':
+                                st.write(f"Null Values Count: {df[st.session_state.get('fill_null_column_bool')].isnull().sum()}")
+                            null_fill_mode = st.selectbox(
+                                label = 'Select mode',
+                                options = sorted(['Forward Fill', 'Backward Fill', 'Mode']),
+                                index = 0,
+                                key = 'fill_null_mode_bool'
+                            )
+                            st.button(
+                                label = 'Fill Null Values',
+                                key = 'fill_null_bt',
+                                on_click = fill_null_values
+                            )
+                        else:
+                            st.warning('No Boolean Column containing Null Values found!')
                 else:
                     st.warning('No null values found')
+                if st.session_state.get('null_fill_message'):
+                        st.success(st.session_state.pop('null_fill_message'))
+                if 'null_filling_exception' in st.session_state:
+                    st.error(st.session_state.pop('null_filling_exception'))
 
         with duplicate:
             st.subheader('Duplicates', text_alignment = 'center')
 
             if (df.duplicated().sum() > 0):
-                if len(df.columns) != 0:
+                if len(df.columns) > 0:
                     dup_rem_mode = st.selectbox(
                         label = 'Select duplicates removal type: ',
                         options = sorted(['Keep First', 'Keep Last', 'Remove All']),
@@ -1128,25 +1120,22 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
                 else:
                     st.warning('No Columns found!')
             else:
-                st.warning('No null values found')
+                st.warning('No Duplicate Values found')
 
                 
         with outliers:
             try:
                 st.subheader('Outliers', text_alignment='center')
-                df = st.session_state.file_uploaded
+                df = st.session_state.get('file_uploaded').copy()
                 num_col = df.select_dtypes(include='number').columns.tolist()
                 if len(num_col) == 0:
                     st.warning('No Numerical Columns found!')
                 else:
-                    column_not_null_removed = [col for col in num_col if df[col].isnull().any()]
-                    if column_not_null_removed:
-                        st.warning(
-                            'Please handle missing values in all numerical columns '
-                            'before proceeding with outlier detection.'
-                        )
+                    num_column_not_null_removed = [col for col in num_col if df[col].isnull().any()]
+                    if num_column_not_null_removed:
+                        st.warning('Please handle missing values in all numerical columns before proceeding with outlier detection.')
                         with st.expander('View Columns with Missing Values'):
-                            for col in column_not_null_removed:
+                            for col in num_column_not_null_removed:
                                 st.write(f'{col}: {df[col].isnull().sum()} missing values')
                         st.session_state.outlier_detection_done = False
                         st.session_state.outlier_masks = {}
@@ -1201,31 +1190,27 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
                                 st.session_state.outlier_limits = {}
                                 st.session_state.outlier_data_snapshot = None
                                 st.info(
-                                    'Dataset or detection method changed. '
-                                    'Please detect outliers again.'
-                                )
+                                    'Dataset or detection method changed. Please detect outliers again.')
                         if st.session_state.get('outlier_detection_done', False):
                             outlier_masks = st.session_state.outlier_masks
                             if len(outlier_masks) == 0:
-                                st.info(
-                                    'No Outliers detected in the Numerical Columns!'
-                                )
+                                st.info('No Outliers detected in the Numerical Columns!')
                             else:
                                 st.write('**Detected Outliers**')
                                 for col, mask in outlier_masks.items():
                                     st.write(f'{col}: {int(mask.sum())} outliers')
                                 selected_col = st.selectbox(
                                     label='Select Column',
-                                    options=list(outlier_masks.keys()),
+                                    options=sorted(list(outlier_masks.keys())),
                                     key='outlier_handling_column'
                                 )
                                 technique = st.selectbox(
                                     label='Select Method to handle Outliers',
-                                    options=[
+                                    options=sorted([
                                         'Remove',
                                         'Replace with Upper and Lower Limits',
                                         'Replace with a Specific Value'
-                                    ],
+                                    ]),
                                     key='out_rem_method'
                                 )
                                 if technique == 'Replace with a Specific Value':
@@ -1249,14 +1234,10 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
                                     if technique == 'Remove':
                                         updated_df = updated_df.loc[~mask].copy()
                                     elif technique == 'Replace with Upper and Lower Limits':
-                                        lower_limit, upper_limit = (
-                                            st.session_state.outlier_limits[selected_col]
-                                        )
-                                        updated_df[selected_col] = (
-                                            updated_df[selected_col].clip(
-                                                lower=lower_limit,
-                                                upper=upper_limit
-                                            )
+                                        lower_limit, upper_limit = st.session_state.outlier_limits[selected_col]
+                                        updated_df[selected_col] = updated_df[selected_col].clip(
+                                            lower=lower_limit,
+                                            upper=upper_limit
                                         )
                                     else:
                                         values = updated_df[selected_col]
@@ -1268,9 +1249,7 @@ def data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_
                                         else:
                                             replacement_value = constant_value
                                         if pd.isna(replacement_value):
-                                            st.error(
-                                                'Cannot calculate the replacement value.'
-                                            )
+                                            st.error('Cannot calculate the replacement value.')
                                             st.stop()
                                         updated_df.loc[
                                             mask, selected_col
@@ -1453,11 +1432,6 @@ def file_uploader_show():
                 col_with_null_values = [col for col in df.columns if df[col].isnull().sum() > 0]
                 col_with_null_values_greater_than_50_percentage = [col for col in df.columns if (df[col].isnull().sum() / len(df[col])) > 0.5]
 
-                cat_col_with_null_values = [col for col in cat_col if df[col].isnull().sum() > 0]
-                num_col_with_null_values = [col for col in num_col if df[col].isnull().sum() > 0]
-                dt_col_with_null_values = [col for col in dt_col if df[col].isnull().sum() > 0]
-                bool_col_with_null_values = [col for col in bool_col if df[col].isnull().sum() > 0]
-
                 st.success("Dataset uploaded successfully!")
 
                 st.title("Data Quality", text_alignment = 'center')
@@ -1598,12 +1572,12 @@ def file_uploader_show():
                         
                 dataset_description()
 
-                data_values_handling(cat_col_with_null_values, num_col_with_null_values, dt_col_with_null_values, bool_col_with_null_values)
+                data_values_handling()
 
                 dw_bt = st.download_button(
                     label = 'Download data as csv',
                     data = st.session_state.file_uploaded.to_csv(index = False).encode('utf-8'),
-                    file_name = 'cleaned_data.csv',
+                    file_name = 'cleaned_data',
                     mime = 'text/csv'
                 )
     except Exception as err:
