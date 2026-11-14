@@ -49,21 +49,18 @@ def _store_datetime_feature_mapping(data, mapping): #No
     st.session_state["datetime_feature_mapping"] = mapping
     data.attrs["datetime_feature_mapping_id"] = mapping_id
 
-@st.cache_data
 def _get_numeric_columns(data):
     try:
         return sorted(data.select_dtypes(include=["number"]).columns.tolist(), key=str)
     except Exception as e:
         st.session_state.get_num_col_exception = str(e)
 
-@st.cache_data
 def _get_categoric_columns(data):
     try:
         return sorted(data.select_dtypes(include=["object", "string", "category"]).columns.tolist(), key=str)
     except Exception as e:
         st.session_state.get_cat_col_exception = str(e)
 
-@st.cache_data
 def _get_datetime_columns(data):
     try:
         return sorted([col for col in data.columns if pd.api.types.is_datetime64_any_dtype(data[col])], key=str)
@@ -143,7 +140,7 @@ def _validate_result(result, valid_inputs):
 def apply_transformation():
     try:
         data = _get_data_or_raise()
-        transformation = st.session_state.get("num_column_mathematical_transformation")
+        transformation = st.session_state.get("fe_num_math_transformation_select")
         if transformation == "Combine Two Features":
             col1_name = st.session_state.get("combine_first_col")
             col2_name = st.session_state.get("combine_second_col")
@@ -411,6 +408,8 @@ def del_cat_col():
         data = _get_data_or_raise()
         column = st.session_state.get("cat_column")
         _require_column(data, column, "categorical")
+        if column not in _get_categoric_columns(data):
+            raise ValueError("The selected column is no longer numerical.")
         updated_data = data.drop(columns=[column]).copy()
         _sync_datetime_feature_mapping(updated_data)
         st.session_state["file_uploaded"] = updated_data
@@ -418,6 +417,20 @@ def del_cat_col():
         st.session_state.pop("del_error", None)
     except (ValueError, KeyError) as exc:
         st.session_state["del_error"] = str(exc)
+
+def del_num_col():
+    try:
+        data = _get_data_or_raise()
+        column = st.session_state.get("num_column_delete")
+        _require_column(data, column, "numerical")
+        if column not in _get_numeric_columns(data):
+            raise ValueError("The selected column is no longer numerical.")
+        updated_data = data.drop(columns=[column]).copy()
+        _sync_datetime_feature_mapping(updated_data)
+        st.session_state.file_uploaded = updated_data
+        st.session_state.del_num_col_message = "Numerical column deleted successfully."
+    except (ValueError, KeyError) as exc:
+        st.session_state["num_col_not_found_error"] = str(exc)
 
 def combine_cat_col():
     try:
@@ -487,19 +500,6 @@ def dt_col_op():
         st.session_state["dt_exception"] = str(exc)
         st.session_state.pop("extracted_col_message", None)
 
-def del_num_col():
-    try:
-        data = _get_data_or_raise()
-        column = st.session_state.get("num_column_delete")
-        _require_column(data, column, "numerical")
-        if column not in _get_numeric_columns(data):
-            raise ValueError("The selected column is no longer numerical.")
-        updated_data = data.drop(columns=[column]).copy()
-        _sync_datetime_feature_mapping(updated_data)
-        st.session_state.file_uploaded = updated_data
-        st.session_state.del_num_col_message = "Numerical column deleted successfully."
-    except (ValueError, KeyError) as exc:
-        st.session_state["num_col_not_found_error"] = str(exc)
 
 def apply_num_col_transformation():
     data = _get_data_or_raise()
@@ -590,10 +590,9 @@ def apply_num_col_transformation():
                 "Add/Subtract/Multiply/Divide a Value",
                 "Combine Two Features",
             ],
-            index = 0,
-            key="num_column_mathematical_transformation",
+            key="fe_num_math_transformation_select",
         )
-        if transformation != "Combine Two Features":
+        if transformation in ['Log', 'Square Root', 'Square', 'Power']:
             st.selectbox(
                 label="Select Column",
                 options=numeric_columns,
@@ -609,13 +608,19 @@ def apply_num_col_transformation():
                     label="Enter New Column Name",
                     key="if_new_num_col_name",
                 )
-        if transformation == "Power":
-            st.number_input(
-                label="Enter Power",
-                value=2.0,
-                key="num_power",
-            )
+            if transformation == "Power":
+                st.number_input(
+                    label="Enter Power",
+                    value=2.0,
+                    key="num_power",
+                )
         elif transformation == "Add/Subtract/Multiply/Divide a Value":
+            st.selectbox(
+                label="Select Column",
+                options=numeric_columns,
+                index = 0,
+                key="num_column_maths_op",
+            )
             st.selectbox(
                 label="Select Operation",
                 options=["Addition", "Division", "Multiplication", "Subtraction"],
@@ -629,15 +634,13 @@ def apply_num_col_transformation():
             )
         elif transformation == "Combine Two Features":
             st.selectbox(
-                label="Select First Numerical Feature",
+                "Select First Numerical Feature",
                 options=numeric_columns,
-                index = 0,
                 key="combine_first_col",
             )
             st.selectbox(
-                label="Select Second Numerical Feature",
+                "Select Second Numerical Feature",
                 options=numeric_columns,
-                index = 0,
                 key="combine_second_col",
             )
             st.selectbox(

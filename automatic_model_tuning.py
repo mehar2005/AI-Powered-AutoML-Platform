@@ -7,11 +7,11 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import KFold
-
 from sklearn.model_selection import StratifiedKFold, KFold
+from sklearn.metrics import silhouette_score
 
 def get_cv(y, classification=True):
     if classification:
@@ -138,6 +138,19 @@ param_grid_rfc = {
     'max_features': ['sqrt', 'log2', None],
     'class_weight': [None, 'balanced']
 }
+param_grid_kmc = {
+    'n_clusters': list(range(2, 11)),
+    'init': ['k-means++', 'random'],
+    'n_init': [10, 15, 20],
+    'max_iter': [100, 200, 300, 500],
+    'algorithm': ['lloyd', 'elkan']
+}
+def kmeans_silhouette_scorer(estimator, X, y=None):
+    labels = estimator.predict(X)
+    unique_labels = set(labels)
+    if len(unique_labels) < 2 or len(unique_labels) >= len(X):
+        return -1
+    return silhouette_score(X, labels)
 
 
 def tuneDTC(X, y):
@@ -412,3 +425,38 @@ def tuneRFR(X, y):
     with st.expander(label = 'View Best Parameters'):
         st.dataframe(best_model)
 
+
+def tuneKMC(X):
+    n_splits = min(5, len(X) // 3)
+    if n_splits < 2:
+        raise ValueError("Insufficient samples for K-Means tuning!")
+    cv = KFold(
+        n_splits=n_splits,
+        shuffle=True,
+        random_state=42
+    )
+    min_validation_size = len(X) // n_splits
+    max_clusters = min(10, min_validation_size - 1)
+    if max_clusters < 2:
+        raise ValueError("Insufficient samples for K-Means tuning!")
+
+    model = KMeans(random_state=42)
+
+    rscv_kmc = RandomizedSearchCV(
+        estimator=model,
+        param_distributions=param_grid_kmc,
+        n_iter=20,
+        scoring=kmeans_silhouette_scorer,
+        random_state=42,
+        n_jobs=-1,
+        pre_dispatch=1,
+        cv=cv
+    )
+
+    rscv_kmc.fit(X)
+
+    best_model = rscv_kmc.best_params_
+    st.session_state.best_kmc_params = rscv_kmc.best_params_
+    st.subheader('K-Means Clustering', text_alignment='center')
+    with st.expander(label='View Best Parameters'):
+        st.dataframe(pd.DataFrame([best_model]))

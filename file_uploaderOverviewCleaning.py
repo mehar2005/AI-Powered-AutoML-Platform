@@ -443,6 +443,7 @@ def data_preview():
                 type = 'primary',
                 on_click = refresh_data
             )
+            st.caption("Refresh Data before previewing!")
     except Exception:
         st.session_state.data_preview_exception = 'An error occured while previewing the data!'
 
@@ -1577,7 +1578,7 @@ def file_uploader_show():
                 dw_bt = st.download_button(
                     label = 'Download data as csv',
                     data = st.session_state.file_uploaded.to_csv(index = False).encode('utf-8'),
-                    file_name = 'cleaned_data',
+                    file_name = 'cleaned_data.csv',
                     mime = 'text/csv'
                 )
     except Exception as err:

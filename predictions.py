@@ -37,7 +37,7 @@ def _get_datetime_value(value, input_type):
 def _get_input_options(data, column):
     if column not in data.columns:
         return []
-    return data[column].dropna().unique().tolist()
+    return sorted(data[column].dropna().unique().tolist())
 
 def _get_numeric_categorical_columns(model_df, categorical_mapping, one_hot_mapping, datetime_columns):
     excluded_columns = set(categorical_mapping)
@@ -48,14 +48,14 @@ def _get_numeric_categorical_columns(model_df, categorical_mapping, one_hot_mapp
     )
     excluded_columns.update(datetime_columns)
 
-    return [
+    return sorted([
         col for col in model_df.columns
         if (
             col not in excluded_columns
             and pd.api.types.is_numeric_dtype(model_df[col])
             and not pd.api.types.is_bool_dtype(model_df[col])
         )
-    ]
+    ])
 
 def _get_prediction_input_data(input_data, model_df, datetime_inputs, datetime_sources):
     for source, extracted_features in datetime_sources.items():
@@ -394,17 +394,24 @@ def predictions_show():
 
             prediction = model.predict(input_df)
 
-            target_variable = st.session_state.get('target_variable')
-            target_mapping = st.session_state.get('categorical_mapping', {}).get(target_variable, {})
-            inverse_mapping = {value: key for key, value in target_mapping.items()}
+            problem_type = st.session_state.get('problem_type')
 
-            display_prediction = inverse_mapping.get(prediction[0], prediction[0])
+            if problem_type == 'Clustering':
+                display_prediction = prediction[0]
+                result_label = 'Assigned Cluster'
+            else:
+                target_variable = st.session_state.get('target_variable')
+                target_mapping = st.session_state.get('categorical_mapping', {}).get(target_variable, {})
+                inverse_mapping = {value: key for key, value in target_mapping.items()}
 
-            with st.container(border = True):
-                st.markdown('## Prediction Result', text_alignment = 'center')
-                st.markdown(f"### Predicted {target_variable} : {display_prediction}")
+                display_prediction = inverse_mapping.get(prediction[0], prediction[0])
+                result_label = f'Predicted {target_variable}'
 
-            if hasattr(model, 'predict_proba'):
+            with st.container(border=True):
+                st.markdown('## Prediction Result', text_alignment='center')
+                st.markdown(f"### {result_label}: {display_prediction}", text_alignment='center')
+
+            if problem_type != 'Clustering' and hasattr(model, 'predict_proba'):
                     probabilities = model.predict_proba(input_df)[0]
 
                     print('Actual probabilities:', probabilities)
@@ -441,22 +448,23 @@ def predictions_show():
                             use_container_width = True
                         )
 
-            try:
-                with st.status(
-                    label = 'Generating SHAP Contributions',
-                    state = 'running',
-                ) as status:
-                    _show_prediction_explanation(
-                        model,
-                        input_df,
-                        model_df,
-                        prediction,
-                        categorical_mapping,
-                        one_hot_mapping
-                    )
-                    status.update(label = "SHAP Contributions Generated Successfully!", state = 'complete')
-            except Exception as explanation_error:
-                st.warning(f'Prediction generated, but its SHAP explanation is unavailable: {explanation_error}')
+            if problem_type != 'Clustering':
+                try:
+                    with st.status(
+                        label = 'Generating SHAP Contributions',
+                        state = 'running',
+                    ) as status:
+                        _show_prediction_explanation(
+                            model,
+                            input_df,
+                            model_df,
+                            prediction,
+                            categorical_mapping,
+                            one_hot_mapping
+                        )
+                        status.update(label = "SHAP Contributions Generated Successfully!", state = 'complete')
+                except Exception as explanation_error:
+                    st.warning(f'Prediction generated, but its SHAP explanation is unavailable: {explanation_error}')
 
     except Exception as err:
         st.error(err)

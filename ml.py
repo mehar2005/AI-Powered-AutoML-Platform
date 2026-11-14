@@ -17,7 +17,8 @@ from models.Classification.LogisticRegression import LogisticRegressionShow
 from models.Classification.DecisionTreeClassifier import DecisionTreeClassifierShow
 from models.Classification.RandomForestClassifier import RandomForestClassifierShow
 from models.Classification.NaiveBayes import NaiveBayesShow
-from automatic_model_tuning import tuneDTC, tuneKNNC, tuneLGR, tuneNB, tuneRFC, tuneDTR, tuneKNNR, tuneLNR, tunePR, tuneRFR
+from models.Clustering.KMeansClustering import KMeansClusteringShow
+from automatic_model_tuning import tuneDTC, tuneKNNC, tuneLGR, tuneNB, tuneRFC, tuneDTR, tuneKNNR, tuneLNR, tunePR, tuneRFR, tuneKMC
 
 
 ml_models = {
@@ -199,7 +200,7 @@ def ml_show():
 
         Regression_models = sorted(['Linear Regression', 'Polynomial Regression', 'Decision Tree Regressor', 'Random Forest Regressor', 'KNN Regressor'])
         Classification_models = sorted(['Logistic Regression', 'Decision Tree Classifier', 'Random Forest Classifier', 'KNN Classifier', 'Naive Bayes Classifier'])
-        Clustering_models = sorted(['K Means Clustering', 'Agglomerative Clustering'])
+        Clustering_models = sorted(['K Means Clustering'])
 
         with col1:
             st.subheader('Target Variable Selection', text_alignment = 'center') 
@@ -343,7 +344,7 @@ def ml_show():
                     )
 
                 if st.session_state.get('models_tb_train'):
-                    train_models = st.button(
+                    st.button(
                         label = 'Train Listed Models',
                         key = 'train_models_bt',
                         type = 'primary'
@@ -354,848 +355,884 @@ def ml_show():
                         disabled = True if st.session_state.get('auto_tune_applied') is None else False,
                         on_click = reset_hyperparameters
                     )
-                    if train_models:
-                        if st.session_state.get('train_models_bt') == True:
-                            with st.status(
-                                label = "Training Models"
-                                ) as training_status:
-                                models = st.session_state.get('models_tb_train')
+                    if st.session_state.get('train_models_bt') == True:
+                        with st.status(
+                            label = "Training Models"
+                            ) as training_status:
+                            models = st.session_state.get('models_tb_train')
 
-                                st.subheader("Model Training Information")
-                                test_ratio_str = st.session_state.get('train_test_ratio')
-                                test_ratio_num = 0.20 if test_ratio_str == '80:20' else 0.30 if test_ratio_str == '70:30' else 0.25 if test_ratio_str == '75:25' else None
-                                custom_test_ratio = st.session_state.get('custom_test_ratio')
+                            st.subheader("Model Training Information")
+                            test_ratio_str = st.session_state.get('train_test_ratio')
+                            test_ratio_num = 0.20 if test_ratio_str == '80:20' else 0.30 if test_ratio_str == '70:30' else 0.25 if test_ratio_str == '75:25' else None
+                            custom_test_ratio = st.session_state.get('custom_test_ratio')
 
-                                if st.session_state.get('problem_type') in ['Binary Classification', 'Multiclass Classification']:
-                                    col1, col2 = st.columns(2, border = True)
-                                    with col1:
-                                        st.markdown("## Train-Test Split Percentage", text_alignment = 'center')
-                                        col = st.columns(8)
-                                        col[3].metric(label = 'Training Data', value = 1 - (test_ratio_num or custom_test_ratio), format = 'percent')
-                                        col[4].metric(label = 'Testing Data', value = (test_ratio_num or custom_test_ratio), format = 'percent')
-                                    with col2:
-                                        df = st.session_state.get('final_model_df').copy()
-                                        st.markdown("## Target Variable Value Counts")
-                                        vc = df[st.session_state.get('target_variable')].value_counts()
-                                        vc_df = vc.reset_index()
-                                        vc_df.columns = ['Class', 'Count']
+                            if st.session_state.get('problem_type') in ['Binary Classification', 'Multiclass Classification']:
+                                col1, col2 = st.columns(2, border = True)
+                                with col1:
+                                    st.markdown("## Train-Test Split Percentage", text_alignment = 'center')
+                                    col = st.columns(8)
+                                    col[3].metric(label = 'Training Data', value = 1 - (test_ratio_num or custom_test_ratio), format = 'percent')
+                                    col[4].metric(label = 'Testing Data', value = (test_ratio_num or custom_test_ratio), format = 'percent')
+                                with col2:
+                                    df = st.session_state.get('file_uploaded').copy()
+                                    st.markdown("## Target Variable Value Counts")
+                                    vc = df[st.session_state.get('target_variable')].value_counts()
+                                    vc_df = vc.reset_index()
+                                    vc_df.columns = ['Class', 'Count']
 
-                                        st.dataframe(vc_df, hide_index = True)
+                                    st.dataframe(vc_df, hide_index = True)
 
-                                elif st.session_state.get('problem_type') == 'Regression':
+                            elif st.session_state.get('problem_type') == 'Regression':
+                                with st.container(border = True):
+                                    st.markdown("## Train-Test Split Percentage", text_alignment = 'center')
+                                    col = st.columns(8)
+                                    col[3].metric(label = 'Training Data', value = 1 - (test_ratio_num or custom_test_ratio), format = 'percent')
+                                    col[4].metric(label = 'Testing Data', value = (test_ratio_num or custom_test_ratio), format = 'percent')
+
+                            st.session_state.regression_models_train_metrics_information = {}
+                            st.session_state.regression_models_test_metrics_information = {}
+                            st.session_state.classification_models_train_metrics_information = {}
+                            st.session_state.classification_models_test_metrics_information = {}
+                            st.session_state.clustering_models_train_metrics_information = {}
+                            st.session_state.clustering_models_test_metrics_information = {}
+                        
+                            for model in models:
+                                if model == 'Linear Regression':
                                     with st.container(border = True):
-                                        st.markdown("## Train-Test Split Percentage", text_alignment = 'center')
-                                        col = st.columns(8)
-                                        col[3].metric(label = 'Training Data', value = 1 - (test_ratio_num or custom_test_ratio), format = 'percent')
-                                        col[4].metric(label = 'Testing Data', value = (test_ratio_num or custom_test_ratio), format = 'percent')
+                                        train_metrics, test_metrics = LinearRegressionShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('Linear Regression')
+                                        status = st.session_state.get('linear_regression_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# Linear Regression", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {st.session_state.get('linear_regression_training_status', 'Not Trained ❎')}", text_alignment = 'center')
 
-                                st.session_state.regression_models_train_metrics_information = {}
-                                st.session_state.regression_models_test_metrics_information = {}
-                                st.session_state.classification_models_train_metrics_information = {}
-                                st.session_state.classification_models_test_metrics_information = {}
-                            
-                                for model in models:
-                                    if model == 'Linear Regression':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics = LinearRegressionShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('Linear Regression')
-                                            status = st.session_state.get('linear_regression_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# Linear Regression", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {st.session_state.get('linear_regression_training_status', 'Not Trained ❎')}", text_alignment = 'center')
+                                            with st.expander("View Training Results"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_train_metrics_information["Linear Regression"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('linear_regression_exception')}')
+                                                    st.warning("No Metrics found!")
 
-                                                with st.expander("View Training Results"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_train_metrics_information["Linear Regression"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('linear_regression_exception')}')
-                                                        st.warning("No Metrics found!")
+                                            with st.expander("View Testing Results"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_test_metrics_information["Linear Regression"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('linear_regression_exception')}')
+                                                    st.warning("No Metrics found!")
 
-                                                with st.expander("View Testing Results"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_test_metrics_information["Linear Regression"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('linear_regression_exception')}')
-                                                        st.warning("No Metrics found!")
+                                        else:
+                                            if 'linear_regression_exception' in st.session_state:
+                                                st.error(st.session_state.pop('linear_regression_exception'))
+                                                
+                                elif model == 'Polynomial Regression':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics = PolynomialRegressionShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('Polynomial Regression')
+                                        status = st.session_state.get('polynomial_regression_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# Polynomial Regression", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {st.session_state.get('polynomial_regression_training_status', 'Not Trained ❎')}", text_alignment = 'center')
 
+                                            with st.expander("View Training Results"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_train_metrics_information["Polynomial Regression"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('polynomial_regression_exception')}')
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Testing Results"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_test_metrics_information["Polynomial Regression"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
+
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('polynomial_regression_exception')}')
+                                                    st.warning("No Metrics found!")
+
+                                        else:
+                                            if 'polynomial_regression_exception' in st.session_state:
+                                                st.error(st.session_state.pop('polynomial_regression_exception'))
+                                
+                                elif model == 'KNN Regressor':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics = KNNRegressionShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('KNN Regressor')
+                                        status = st.session_state.get('knn_regression_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# KNN Regressor", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {st.session_state.get('knn_regression_training_status', 'Not Trained ❎')}", text_alignment = 'center')
+
+                                            with st.expander("View Training Metrics"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_train_metrics_information["KNN Regression"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('knn_regression_exception')}')
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Training Metrics"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_test_metrics_information["KNN Regression"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
+
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('knn_regression_exception')}')
+                                                    st.warning("No Metrics found!")
+
+                                        else:
+                                            if 'knn_regression_exception' in st.session_state:
+                                                st.error(st.session_state.pop('knn_regression_exception'))
+                                
+                                elif model == 'Decision Tree Regressor':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics = DecisionTreeRegressorShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('Decision Tree Regressor')
+                                        status = st.session_state.get('decision_tree_regressor_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# Decision Tree Regressor", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {st.session_state.get('decision_tree_regressor_training_status', 'Not Trained ❎')}", text_alignment = 'center')
+
+                                            with st.expander("View Training Metrics"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_train_metrics_information["Decision Tree Regression"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('decision_tree_regressor_exception')}')
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Testing Metrics"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_test_metrics_information["Decision Tree Regression"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
+
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('decision_tree_regressor_exception')}')
+                                                    st.warning("No Metrics found!")
+
+                                        else:
+                                            if 'decision_tree_regressor_exception' in st.session_state:
+                                                st.error(st.session_state.pop('decision_tree_regressor_exception'))
+                                elif model == 'Random Forest Regressor':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics = RandomForestRegressorShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('Random Forest Regressor')
+                                        status = st.session_state.get('random_forest_regressor_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# Random Forest Regressor", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {st.session_state.get('random_forest_regressor_training_status', 'Not Trained ❎')}", text_alignment = 'center')
+
+                                            with st.expander("View Training Metrics"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_train_metrics_information["Random Forest Regressor"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('random_forest_regressor_exception')}')
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Testing Metrics"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'MAE',
+                                                            value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'MSE',
+                                                            value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'RMSE',
+                                                            value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'R2',
+                                                            value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
+                                                        )
+                                                    if 'regression_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.regression_models_test_metrics_information["Random Forest Regressor"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
+
+                                                else:
+                                                    st.error(f'Error: {st.session_state.get('random_forest_regressor_exception')}')
+                                                    st.warning("No Metrics found!")
+
+                                        else:
+                                            if 'decision_tree_regressor_exception' in st.session_state:
+                                                st.error(st.session_state.pop('decision_tree_regressor_exception'))
+
+                                elif model == 'Logistic Regression':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics, confusion_matrix, class_report = LogisticRegressionShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('Logistic Regression')
+                                        status = st.session_state.get('logistic_regression_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# Logistic Regression", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {status}", text_alignment = 'center')
+
+                                            with st.expander("View Training Metrics"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_train_metrics_information["Logistic Regression"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Testing Metrics"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_test_metrics_information["Logistic Regression"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
+
+                                            if confusion_matrix is not None:
+                                                conf_matrix_df = pd.DataFrame(
+                                                    confusion_matrix,
+                                                    index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
+                                                    columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
+                                                )
+
+                                            if class_report is not None:
+                                                class_report_df = pd.DataFrame(class_report).transpose()
+
+                                            if confusion_matrix is not None and class_report is not None:
+                                                with st.expander("View Other Metrics"):
+                                                    st.markdown("## Confusion Matrix")
+                                                    st.dataframe(conf_matrix_df)
+                                                    st.markdown("## Classification Report")
+                                                    st.dataframe(class_report_df)
                                             else:
-                                                if 'linear_regression_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('linear_regression_exception'))
-                                                    
-                                    elif model == 'Polynomial Regression':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics = PolynomialRegressionShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('Polynomial Regression')
-                                            status = st.session_state.get('polynomial_regression_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# Polynomial Regression", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {st.session_state.get('polynomial_regression_training_status', 'Not Trained ❎')}", text_alignment = 'center')
+                                                st.warning("No Metrics found!")
 
-                                                with st.expander("View Training Results"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_train_metrics_information["Polynomial Regression"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('polynomial_regression_exception')}')
-                                                        st.warning("No Metrics found!")
-                                                with st.expander("View Testing Results"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_test_metrics_information["Polynomial Regression"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
+                                        else:
+                                            if 'logistic_regression_exception' in st.session_state:
+                                                st.error(st.session_state.pop('logistic_regression_exception'))
+                                
+                                elif model == 'KNN Classifier':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics, confusion_matrix, class_report = KNNClassificationShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('KNN Classifier')
+                                        status = st.session_state.get('knn_classification_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# KNN Classifier", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {status}", text_alignment = 'center')
 
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('polynomial_regression_exception')}')
-                                                        st.warning("No Metrics found!")
+                                            with st.expander("View Training Metrics"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_train_metrics_information["KNN Classifier"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Testing Metrics"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_test_metrics_information["KNN Classifier"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
 
+                                            if confusion_matrix is not None:
+                                                conf_matrix_df = pd.DataFrame(
+                                                confusion_matrix,
+                                                index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
+                                                columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
+                                            )
+
+                                            if class_report is not None:
+                                                class_report_df = pd.DataFrame(class_report).transpose()
+
+                                            if confusion_matrix is not None and class_report is not None:
+                                                with st.expander("View Other Metrics"):
+                                                    st.markdown("## Confusion Matrix")
+                                                    st.dataframe(conf_matrix_df)
+                                                    st.markdown("## Classification Report")
+                                                    st.dataframe(class_report_df)
                                             else:
-                                                if 'polynomial_regression_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('polynomial_regression_exception'))
-                                    
-                                    elif model == 'KNN Regressor':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics = KNNRegressionShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('KNN Regressor')
-                                            status = st.session_state.get('knn_regression_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# KNN Regressor", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {st.session_state.get('knn_regression_training_status', 'Not Trained ❎')}", text_alignment = 'center')
+                                                st.warning("No Metrics found!")
 
-                                                with st.expander("View Training Metrics"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_train_metrics_information["KNN Regression"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('knn_regression_exception')}')
-                                                        st.warning("No Metrics found!")
-                                                with st.expander("View Training Metrics"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_test_metrics_information["KNN Regression"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
+                                        else:
+                                            if 'knn_classification_exception' in st.session_state:
+                                                st.error(st.session_state.pop('knn_classification_exception'))
+                                
+                                elif model == 'Naive Bayes Classifier':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics, confusion_matrix, class_report = NaiveBayesShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('Naive Bayes Classifier')
+                                        status = st.session_state.get('naive_bayes_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# Naive Bayes Classifier", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {status}", text_alignment = 'center')
 
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('knn_regression_exception')}')
-                                                        st.warning("No Metrics found!")
+                                            with st.expander("View Training Status"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_train_metrics_information["Naive Bayes Classifier"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Testing Status"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_test_metrics_information["Naive Bayes Classifier"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
 
+                                            if confusion_matrix is not None:
+                                                conf_matrix_df = pd.DataFrame(
+                                                confusion_matrix,
+                                                index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
+                                                columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
+                                            )
+
+                                            if class_report is not None:
+                                                class_report_df = pd.DataFrame(class_report).transpose()
+
+                                            if confusion_matrix is not None and class_report is not None:
+                                                with st.expander("View Other Metrics"):
+                                                    st.markdown("## Confusion Matrix")
+                                                    st.dataframe(conf_matrix_df)
+                                                    st.markdown("## Classification Report")
+                                                    st.dataframe(class_report_df)
                                             else:
-                                                if 'knn_regression_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('knn_regression_exception'))
-                                    
-                                    elif model == 'Decision Tree Regressor':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics = DecisionTreeRegressorShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('Decision Tree Regressor')
-                                            status = st.session_state.get('decision_tree_regressor_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# Decision Tree Regressor", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {st.session_state.get('decision_tree_regressor_training_status', 'Not Trained ❎')}", text_alignment = 'center')
+                                                st.warning("No Metrics found!")
 
-                                                with st.expander("View Training Metrics"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_train_metrics_information["Decision Tree Regression"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('decision_tree_regressor_exception')}')
-                                                        st.warning("No Metrics found!")
-                                                with st.expander("View Testing Metrics"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_test_metrics_information["Decision Tree Regression"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
+                                        else:
+                                            if 'naive_bayes_exception' in st.session_state:
+                                                st.error(st.session_state.pop('naive_bayes_exception'))
+                                
+                                elif model == 'Decision Tree Classifier':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics, confusion_matrix, class_report = DecisionTreeClassifierShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('Decision Tree Classifier')
+                                        status = st.session_state.get('decision_tree_classifier_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# Decision Tree Classifier", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {status}", text_alignment = 'center')
 
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('decision_tree_regressor_exception')}')
-                                                        st.warning("No Metrics found!")
+                                            with st.expander("View Training Metrics"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_train_metrics_information["Decision Tree Classifier"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Testing Metrics"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_test_metrics_information["Decision Tree Classifier"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
 
+                                            if confusion_matrix is not None:
+                                                conf_matrix_df = pd.DataFrame(
+                                                confusion_matrix,
+                                                index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
+                                                columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
+                                            )
+
+                                            if class_report is not None:
+                                                class_report_df = pd.DataFrame(class_report).transpose()
+
+                                            if confusion_matrix is not None and class_report is not None:
+                                                with st.expander("View Other Metrics"):
+                                                    st.markdown("## Confusion Matrix")
+                                                    st.dataframe(conf_matrix_df)
+                                                    st.markdown("## Classification Report")
+                                                    st.dataframe(class_report_df)
                                             else:
-                                                if 'decision_tree_regressor_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('decision_tree_regressor_exception'))
-                                    elif model == 'Random Forest Regressor':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics = RandomForestRegressorShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('Random Forest Regressor')
-                                            status = st.session_state.get('random_forest_regressor_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# Random Forest Regressor", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {st.session_state.get('random_forest_regressor_training_status', 'Not Trained ❎')}", text_alignment = 'center')
+                                                st.warning("No Metrics found!")
 
-                                                with st.expander("View Training Metrics"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{train_metrics['mae'] : .3f}' if train_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{train_metrics['mse'] : .3f}' if train_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{train_metrics['rmse'] : .3f}' if train_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{train_metrics['r2'] : .3f}' if train_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_train_metrics_information["Random Forest Regressor"] = train_metrics['r2'] if train_metrics['r2'] is not None else "N/A"
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('random_forest_regressor_exception')}')
-                                                        st.warning("No Metrics found!")
-                                                with st.expander("View Testing Metrics"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'MAE',
-                                                                value = f'{test_metrics['mae'] : .3f}' if test_metrics['mae'] is not None else "N/A"
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'MSE',
-                                                                value = f'{test_metrics['mse'] : .3f}' if test_metrics['mse'] is not None else "N/A"
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'RMSE',
-                                                                value = f'{test_metrics['rmse'] : .3f}' if test_metrics['rmse'] is not None else "N/A"
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'R2',
-                                                                value = f'{test_metrics['r2'] : .3f}' if test_metrics['r2'] is not None else "N/A"
-                                                            )
-                                                        if 'regression_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.regression_models_test_metrics_information["Random Forest Regressor"] = test_metrics['r2'] if test_metrics['r2'] is not None else "N/A"
+                                        else:
+                                            if 'decision_tree_classifier_exception' in st.session_state:
+                                                st.error(st.session_state.pop('decision_tree_classifier_exception'))
+                                elif model == 'Random Forest Classifier':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics, confusion_matrix, class_report = RandomForestClassifierShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('Random Forest Classifier')
+                                        status = st.session_state.get('random_forest_classifier_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# Random Forest Classifier", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {status}", text_alignment = 'center')
 
-                                                    else:
-                                                        st.error(f'Error: {st.session_state.get('random_forest_regressor_exception')}')
-                                                        st.warning("No Metrics found!")
+                                            with st.expander("View Training Metrics"):
+                                                if train_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_train_metrics_information["Random Forest Classifier"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Testing Metrics"):
+                                                if test_metrics is not None:
+                                                    col1, col2, col3, col4 = st.columns(4, border = True)
+                                                    with col1:
+                                                        st.metric(
+                                                            label = 'Accuracy',
+                                                            value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
+                                                        )
+                                                    with col2:
+                                                        st.metric(
+                                                            label = 'Precision',
+                                                            value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
+                                                        )
+                                                    with col3:
+                                                        st.metric(
+                                                            label = 'Recall',
+                                                            value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
+                                                        )
+                                                    with col4:
+                                                        st.metric(
+                                                            label = 'F1-Score',
+                                                            value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
+                                                        )
+                                                    if 'classification_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.classification_models_test_metrics_information["Random Forest Classifier"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
 
+                                            if confusion_matrix is not None:
+                                                conf_matrix_df = pd.DataFrame(
+                                                confusion_matrix,
+                                                index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
+                                                columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
+                                            )
+
+                                            if class_report is not None:
+                                                class_report_df = pd.DataFrame(class_report).transpose()
+
+                                            if confusion_matrix is not None and class_report is not None:
+                                                with st.expander("View Other Metrics"):
+                                                    st.markdown("## Confusion Matrix")
+                                                    st.dataframe(conf_matrix_df)
+                                                    st.markdown("## Classification Report")
+                                                    st.dataframe(class_report_df)
                                             else:
-                                                if 'decision_tree_regressor_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('decision_tree_regressor_exception'))
+                                                st.warning("No Metrics found!")
 
-                                    elif model == 'Logistic Regression':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics, confusion_matrix, class_report = LogisticRegressionShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('Logistic Regression')
-                                            status = st.session_state.get('logistic_regression_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# Logistic Regression", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {status}", text_alignment = 'center')
+                                        else:
+                                            if 'random_forest_classifier_exception' in st.session_state:
+                                                st.error(st.session_state.pop('random_forest_classifier_exception'))
+                                elif model == 'K Means Clustering':
+                                    with st.container(border = True):
+                                        train_metrics, test_metrics = KMeansClusteringShow()
+                                        if train_metrics is not None:
+                                            store_fitted_pipeline('K Means Clustering')
+                                        status = st.session_state.get('k_means_clustering_training_status', 'Not Trained ❎')
+                                        if status == 'Trained ✅':
+                                            st.markdown("# K Means Clustering", text_alignment = 'center')
+                                            st.markdown(f"### Status -> {status}", text_alignment = 'center')
 
-                                                with st.expander("View Training Metrics"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_train_metrics_information["Logistic Regression"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-                                                with st.expander("View Testing Metrics"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_test_metrics_information["Logistic Regression"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-
-                                                if confusion_matrix is not None:
-                                                    conf_matrix_df = pd.DataFrame(
-                                                        confusion_matrix,
-                                                        index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
-                                                        columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
+                                            with st.expander("View Training Metrics"):
+                                                if train_metrics is not None:
+                                                    st.metric(
+                                                        label = 'Silhouette Score',
+                                                        value = train_metrics['silhouette'] if train_metrics['silhouette'] is not None else "N/A"
                                                     )
-
-                                                if class_report is not None:
-                                                    class_report_df = pd.DataFrame(class_report).transpose()
-
-                                                if confusion_matrix is not None and class_report is not None:
-                                                    with st.expander("View Other Metrics"):
-                                                        st.markdown("## Confusion Matrix")
-                                                        st.dataframe(conf_matrix_df)
-                                                        st.markdown("## Classification Report")
-                                                        st.dataframe(class_report_df)
+                                                    if 'clustering_models_train_metrics_information' in st.session_state:
+                                                        st.session_state.clustering_models_train_metrics_information["K Means Clustering"] = train_metrics['silhouette'] if train_metrics['silhouette'] is not None else "N/A"
+                                                else:
+                                                    st.warning("No Metrics found!")
+                                            with st.expander("View Testing Metrics"):
+                                                if test_metrics is not None:
+                                                    st.metric(
+                                                        label = 'Silhouette Score',
+                                                        value = test_metrics['silhouette'] if test_metrics['silhouette'] is not None else "N/A"
+                                                    )
+                                                    if 'clustering_models_test_metrics_information' in st.session_state:
+                                                        st.session_state.clustering_models_test_metrics_information["K Means Clustering"] = test_metrics['silhouette'] if test_metrics['silhouette'] is not None else "N/A"
                                                 else:
                                                     st.warning("No Metrics found!")
 
-                                            else:
-                                                if 'logistic_regression_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('logistic_regression_exception'))
-                                    
-                                    elif model == 'KNN Classifier':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics, confusion_matrix, class_report = KNNClassificationShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('KNN Classifier')
-                                            status = st.session_state.get('knn_classification_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# KNN Classifier", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {status}", text_alignment = 'center')
-
-                                                with st.expander("View Training Metrics"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_train_metrics_information["KNN Classifier"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-                                                with st.expander("View Testing Metrics"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_test_metrics_information["KNN Classifier"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-
-                                                if confusion_matrix is not None:
-                                                    conf_matrix_df = pd.DataFrame(
-                                                    confusion_matrix,
-                                                    index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
-                                                    columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
-                                                )
-
-                                                if class_report is not None:
-                                                    class_report_df = pd.DataFrame(class_report).transpose()
-
-                                                if confusion_matrix is not None and class_report is not None:
-                                                    with st.expander("View Other Metrics"):
-                                                        st.markdown("## Confusion Matrix")
-                                                        st.dataframe(conf_matrix_df)
-                                                        st.markdown("## Classification Report")
-                                                        st.dataframe(class_report_df)
-                                                else:
-                                                    st.warning("No Metrics found!")
-
-                                            else:
-                                                if 'knn_classification_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('knn_classification_exception'))
-                                    
-                                    elif model == 'Naive Bayes Classifier':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics, confusion_matrix, class_report = NaiveBayesShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('Naive Bayes Classifier')
-                                            status = st.session_state.get('naive_bayes_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# Naive Bayes Classifier", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {status}", text_alignment = 'center')
-
-                                                with st.expander("View Training Status"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_train_metrics_information["Naive Bayes Classifier"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-                                                with st.expander("View Testing Status"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_test_metrics_information["Naive Bayes Classifier"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-
-                                                if confusion_matrix is not None:
-                                                    conf_matrix_df = pd.DataFrame(
-                                                    confusion_matrix,
-                                                    index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
-                                                    columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
-                                                )
-
-                                                if class_report is not None:
-                                                    class_report_df = pd.DataFrame(class_report).transpose()
-
-                                                if confusion_matrix is not None and class_report is not None:
-                                                    with st.expander("View Other Metrics"):
-                                                        st.markdown("## Confusion Matrix")
-                                                        st.dataframe(conf_matrix_df)
-                                                        st.markdown("## Classification Report")
-                                                        st.dataframe(class_report_df)
-                                                else:
-                                                    st.warning("No Metrics found!")
-
-                                            else:
-                                                if 'naive_bayes_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('naive_bayes_exception'))
-                                    
-                                    elif model == 'Decision Tree Classifier':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics, confusion_matrix, class_report = DecisionTreeClassifierShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('Decision Tree Classifier')
-                                            status = st.session_state.get('decision_tree_classifier_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# Decision Tree Classifier", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {status}", text_alignment = 'center')
-
-                                                with st.expander("View Training Metrics"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_train_metrics_information["Decision Tree Classifier"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-                                                with st.expander("View Testing Metrics"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_test_metrics_information["Decision Tree Classifier"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-
-                                                if confusion_matrix is not None:
-                                                    conf_matrix_df = pd.DataFrame(
-                                                    confusion_matrix,
-                                                    index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
-                                                    columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
-                                                )
-
-                                                if class_report is not None:
-                                                    class_report_df = pd.DataFrame(class_report).transpose()
-
-                                                if confusion_matrix is not None and class_report is not None:
-                                                    with st.expander("View Other Metrics"):
-                                                        st.markdown("## Confusion Matrix")
-                                                        st.dataframe(conf_matrix_df)
-                                                        st.markdown("## Classification Report")
-                                                        st.dataframe(class_report_df)
-                                                else:
-                                                    st.warning("No Metrics found!")
-
-                                            else:
-                                                if 'decision_tree_classifier_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('decision_tree_classifier_exception'))
-                                    elif model == 'Random Forest Classifier':
-                                        with st.container(border = True):
-                                            train_metrics, test_metrics, confusion_matrix, class_report = RandomForestClassifierShow()
-                                            if train_metrics is not None:
-                                                store_fitted_pipeline('Random Forest Classifier')
-                                            status = st.session_state.get('random_forest_classifier_training_status', 'Not Trained ❎')
-                                            if status == 'Trained ✅':
-                                                st.markdown("# Random Forest Classifier", text_alignment = 'center')
-                                                st.markdown(f"### Status -> {status}", text_alignment = 'center')
-
-                                                with st.expander("View Training Metrics"):
-                                                    if train_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{train_metrics['accuracy'] * 100 : .3f} %' if train_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{train_metrics['precision'] * 100 : .3f} %' if train_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{train_metrics['recall'] * 100 : .3f} %' if train_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{train_metrics['f1'] : .3f} %' if train_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_train_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_train_metrics_information["Random Forest Classifier"] = train_metrics['f1'] if train_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-                                                with st.expander("View Testing Metrics"):
-                                                    if test_metrics is not None:
-                                                        col1, col2, col3, col4 = st.columns(4, border = True)
-                                                        with col1:
-                                                            st.metric(
-                                                                label = 'Accuracy',
-                                                                value = f'{test_metrics['accuracy'] * 100 : .3f} %' if test_metrics['accuracy'] is not None else 'N/A'
-                                                            )
-                                                        with col2:
-                                                            st.metric(
-                                                                label = 'Precision',
-                                                                value = f'{test_metrics['precision'] * 100 : .3f} %' if test_metrics['precision'] is not None else 'N/A'
-                                                            )
-                                                        with col3:
-                                                            st.metric(
-                                                                label = 'Recall',
-                                                                value = f'{test_metrics['recall'] * 100 : .3f} %' if test_metrics['recall'] is not None else 'N/A'
-                                                            )
-                                                        with col4:
-                                                            st.metric(
-                                                                label = 'F1-Score',
-                                                                value = f'{test_metrics['f1'] : .3f} %' if test_metrics['f1'] is not None else 'N/A'
-                                                            )
-                                                        if 'classification_models_test_metrics_information' in st.session_state:
-                                                            st.session_state.classification_models_test_metrics_information["Random Forest Classifier"] = test_metrics['f1'] if test_metrics['f1'] is not None else "N/A"
-                                                    else:
-                                                        st.warning("No Metrics found!")
-
-                                                if confusion_matrix is not None:
-                                                    conf_matrix_df = pd.DataFrame(
-                                                    confusion_matrix,
-                                                    index = [f'Actual {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))],
-                                                    columns = [f'Predicted {i}' for i in sorted(set(df[st.session_state.get('target_variable')].unique()))]
-                                                )
-
-                                                if class_report is not None:
-                                                    class_report_df = pd.DataFrame(class_report).transpose()
-
-                                                if confusion_matrix is not None and class_report is not None:
-                                                    with st.expander("View Other Metrics"):
-                                                        st.markdown("## Confusion Matrix")
-                                                        st.dataframe(conf_matrix_df)
-                                                        st.markdown("## Classification Report")
-                                                        st.dataframe(class_report_df)
-                                                else:
-                                                    st.warning("No Metrics found!")
-
-                                            else:
-                                                if 'random_forest_classifier_exception' in st.session_state:
-                                                    st.error(st.session_state.pop('random_forest_classifier_exception'))
-                                training_status.update(
-                                    label = "Model Training Completed",
-                                    state = 'complete'
-                                    )
+                                        else:
+                                            if 'k_means_clustering_exception' in st.session_state:
+                                                st.error(st.session_state.pop('k_means_clustering_exception'))
+                                
+                            training_status.update(
+                                label = "Model Training Completed",
+                                state = 'complete'
+                                )
 
             with hyper_tuning:
                 st.multiselect(
@@ -1255,13 +1292,17 @@ def ml_show():
                                 if 'Random Forest Regressor' in models_for_tuning:
                                     tuneRFR(X, y)
 
-                                status.update(label = 'Models Tuned Successfully!', state = 'complete')
+                                if 'K Means Clustering' in models_for_tuning:
+                                    tuneKMC(X)
 
+                                status.update(label = 'Models Tuned Successfully!', state = 'complete')
 
         regression_model_trained = st.session_state.get('regression_models_train_metrics_information')        
         regression_model_tested = st.session_state.get('regression_models_test_metrics_information')        
         classification_model_trained = st.session_state.get('classification_models_train_metrics_information')  
         classification_model_tested = st.session_state.get('classification_models_test_metrics_information')  
+        clustering_model_trained = st.session_state.get('clustering_models_train_metrics_information')  
+        clustering_model_tested = st.session_state.get('clustering_models_test_metrics_information')  
 
         if problem_type_heading == 'Regression':
             with st.container(border = True):
@@ -1374,6 +1415,52 @@ def ml_show():
                                 st.session_state.final_selected_model = st.session_state.get('rfc_model')
                             if selected_model == 'KNN Classifier':
                                 st.session_state.final_selected_model = st.session_state.get('knnc_model')
+
+                            if st.session_state.get('final_selected_model') is not None:
+                                st.session_state.final_model_selected_confirmation = 'Model Selected Successfully!'
+                                st.success(st.session_state.get('final_model_selected_confirmation'))
+                                st.write(st.session_state.get('final_selected_model'))
+        elif problem_type_heading == 'Clustering':
+            with st.container(border = True):
+
+                st.markdown("## Best Model Selection")
+                if clustering_model_trained is not None and clustering_model_tested is not None:
+                    clustering_model_trained_df = pd.DataFrame(
+                        clustering_model_trained.items(),
+                        columns = ['Model', 'Silhouette Train']
+                    ).sort_values(by = 'Silhouette Train', ascending = False)
+                    clustering_model_tested_df = pd.DataFrame(
+                        clustering_model_tested.items(),
+                        columns = ['Modell', 'Silhouette Test']
+                    ).sort_values(by = 'Silhouette Test', ascending = False)
+
+                    master_df = pd.concat([clustering_model_trained_df, clustering_model_tested_df], axis = 1)
+
+                    st.dataframe(master_df.drop(columns = ['Modell']).sort_values(by = 'Silhouette Test', ascending = False), hide_index = True)
+
+                    models_dict = {
+                        'kmc_model' : st.session_state.get('kmc_model')
+                    }
+
+                    if all(x is not None for x in models_dict if x in models):
+
+                        st.selectbox(
+                            label = 'Select Model',
+                            options = clustering_model_trained.keys(),
+                            index = 0,
+                            key = 'selected_best_clustering_model'
+                        )
+
+                        if st.button(
+                            label = 'Confirm Selection',
+                            type = 'primary'
+                        ):
+                            selected_model = st.session_state.get('selected_best_clustering_model')
+
+                            st.session_state.final_selected_model = ''
+
+                            if selected_model == 'K Means Clustering':
+                                st.session_state.final_selected_model = st.session_state.get('kmc_model')
 
                             if st.session_state.get('final_selected_model') is not None:
                                 st.session_state.final_model_selected_confirmation = 'Model Selected Successfully!'
