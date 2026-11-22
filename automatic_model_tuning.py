@@ -165,7 +165,7 @@ def tuneDTC(X, y):
         scoring = 'accuracy',
         random_state=42,
         n_jobs = -1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv = cv
     )
     rscv_dtc.fit(
@@ -199,7 +199,7 @@ def tuneKNNC(X, y):
         scoring='accuracy',
         random_state=42,
         n_jobs=-1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv=cv
     )
 
@@ -223,7 +223,7 @@ def tuneLGR(X, y):
         scoring = 'accuracy',
         random_state=42,
         n_jobs = -1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv = cv
     )
     rscv_lgr.fit(
@@ -249,7 +249,7 @@ def tuneNB(X, y):
         scoring = 'accuracy',
         random_state=42,
         n_jobs = -1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv = cv
     )
     rscv_nb.fit(
@@ -274,7 +274,7 @@ def tuneRFC(X, y):
         scoring = 'accuracy',
         random_state=42,
         n_jobs = -1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv = cv
     )
     rscv_rfc.fit(
@@ -300,7 +300,7 @@ def tuneDTR(X, y):
         scoring = 'r2',
         random_state=42,
         n_jobs = -1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv = cv
     )
     rscv_dtr.fit(
@@ -334,7 +334,7 @@ def tuneKNNR(X, y):
         scoring='r2',
         random_state=42,
         n_jobs=-1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv=cv
     )
 
@@ -358,7 +358,7 @@ def tuneLNR(X, y):
         scoring = 'r2',
         random_state=42,
         n_jobs = -1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv = cv
     )
     rscv_lnr.fit(
@@ -386,7 +386,7 @@ def tunePR(X, y):
         scoring = 'r2',
         random_state=42,
         n_jobs = -1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv = cv
     )
     rscv_pr.fit(
@@ -411,7 +411,7 @@ def tuneRFR(X, y):
         scoring = 'r2',
         random_state=42,
         n_jobs = -1,
-        pre_dispatch = 1,
+        pre_dispatch = "2*n_jobs",
         cv = cv
     )
     rscv_rfr.fit(
