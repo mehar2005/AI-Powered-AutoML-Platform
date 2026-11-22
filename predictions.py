@@ -79,27 +79,6 @@ def _get_prediction_input_data(input_data, model_df, datetime_inputs, datetime_s
 
     return input_df
 
-def _get_display_values(input_df, categorical_mapping, one_hot_mapping):
-    display_values = input_df.iloc[0].astype(object).copy()
-
-    for column, category_mapping in categorical_mapping.items():
-        if column not in display_values.index:
-            continue
-
-        for category, encoded_value in category_mapping.items():
-            if display_values[column] == encoded_value:
-                display_values[column] = category
-                break
-
-    for original_column, category_mapping in one_hot_mapping.items():
-        for category, dummy_column in category_mapping.items():
-            if dummy_column in display_values.index:
-                display_values[dummy_column] = category if input_df.at[
-                    input_df.index[0], dummy_column
-                ] else f"not {category}"
-
-    return display_values
-
 def _get_model_classes(model):
     classes = getattr(model, 'classes_', None)
 
@@ -108,77 +87,6 @@ def _get_model_classes(model):
         classes = getattr(final_estimator, 'classes_', None)
 
     return classes
-
-def _get_numeric_explanation_data(data):
-    try:
-        return pd.DataFrame(
-            data.to_numpy(dtype=float),
-            columns=data.columns,
-            index=data.index
-        )
-    except (TypeError, ValueError) as error:
-        raise ValueError(
-            'This model input contains a non-numeric feature that SHAP cannot explain.'
-        ) from error
-
-def _show_prediction_explanation(model, input_df, background_data, prediction, categorical_mapping, one_hot_mapping):
-    if not isinstance(background_data, pd.DataFrame) or background_data.empty:
-        st.info('A training-data sample is required to explain this prediction.')
-        return
-
-    background_data = background_data.reindex(columns=input_df.columns).dropna()
-    if background_data.empty:
-        st.info('A complete training-data sample is required to explain this prediction.')
-        return
-
-    numeric_input_df = _get_numeric_explanation_data(input_df)
-    numeric_background_data = _get_numeric_explanation_data(background_data).sample(
-        n=min(50, len(background_data)),
-        random_state=42
-    )
-    classes = _get_model_classes(model)
-    explained_class = None
-
-    if hasattr(model, 'predict_proba') and classes is not None:
-        predicted_class = prediction[0]
-        class_index = list(classes).index(predicted_class)
-        explained_class = classes[class_index]
-
-        def predict_function(values):
-            values_df = pd.DataFrame(values, columns=numeric_input_df.columns)
-            return model.predict_proba(values_df)[:, class_index]
-    else:
-        def predict_function(values):
-            values_df = pd.DataFrame(values, columns=numeric_input_df.columns)
-            return model.predict(values_df)
-
-    explainer = shap.PermutationExplainer(predict_function, numeric_background_data)
-    shap_values = explainer(
-        numeric_input_df,
-        max_evals=(2 * numeric_input_df.shape[1]) + 1
-    )
-    display_values = _get_display_values(
-        input_df,
-        categorical_mapping,
-        one_hot_mapping
-    )
-    display_explanation = shap.Explanation(
-        values=shap_values.values[0],
-        base_values=shap_values.base_values[0],
-        data=display_values.to_numpy(),
-        feature_names=list(input_df.columns)
-    )
-
-    st.subheader('Why this prediction?')
-    if explained_class is not None:
-        st.caption(f"SHAP contributions for predicted class: {explained_class}")
-    else:
-        st.caption('SHAP contributions for the predicted value')
-
-    figure = plt.figure()
-    shap.plots.waterfall(display_explanation, show=False)
-    st.pyplot(figure, use_container_width=True)
-    plt.close(figure)
 
 def predictions_show():
     try:
@@ -447,24 +355,6 @@ def predictions_show():
                             },
                             use_container_width = True
                         )
-
-            if problem_type != 'Clustering':
-                try:
-                    with st.status(
-                        label = 'Generating SHAP Contributions',
-                        state = 'running',
-                    ) as status:
-                        _show_prediction_explanation(
-                            model,
-                            input_df,
-                            model_df,
-                            prediction,
-                            categorical_mapping,
-                            one_hot_mapping
-                        )
-                        status.update(label = "SHAP Contributions Generated Successfully!", state = 'complete')
-                except Exception as explanation_error:
-                    st.warning(f'Prediction generated, but its SHAP explanation is unavailable: {explanation_error}')
 
     except Exception as err:
         st.error(err)
