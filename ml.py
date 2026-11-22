@@ -191,7 +191,7 @@ def ml_show():
         df = st.session_state.get('file_uploaded')
 
         if df is None or not isinstance(df, pd.DataFrame) or df.empty:
-            st.warning("Upload a dataset to start making predictions!")
+            st.error("Upload a Dataset First!")
             return
         
         df = df.copy()
@@ -207,11 +207,11 @@ def ml_show():
             target_var = st.selectbox(
                 label = 'Select Target Variable',
                 options = sorted(df.columns),
-                index = 0,
                 key = 'target_variable'
             )
 
         with col2:
+            #Hello
             st.subheader('Problem Type', text_alignment = 'center')
 
             st.markdown(f"#### Target Variable: {st.session_state.get('target_variable')}")
@@ -259,7 +259,7 @@ def ml_show():
                 st.multiselect(
                     label = 'Select Models',
                     options = Regression_models if problem_type_heading == 'Regression' else Classification_models if problem_type_heading == 'Classification' else Clustering_models,
-                    default = ["Linear Regression"] if problem_type_heading == 'Regression' else ['Logistic Regression'] if problem_type_heading == 'Classification' else ["K Means Clustering"],
+                    default = ['Linear Regression'] if problem_type_heading == 'Regression' else ['Logistic Regression'] if problem_type_heading == 'Classification' else ["K Means Clustering"],
                     key = 'models_tb_train'
                 )
                 st.multiselect(
@@ -1235,67 +1235,67 @@ def ml_show():
                                 )
 
             with hyper_tuning:
-                st.multiselect(
-                    label = 'Select models for Hyperparameter Tuning',
-                    options = list(st.session_state.get('models_tb_train')),
-                    key = 'models_for_tuning',
-                    disabled = True if not st.session_state.get('models_tb_train') else False
-                )
-                apply_auto_tune = st.button(
-                    label = 'Apply Automatic Model Tuning',
-                    key = 'apply_auto_tuning',
-                    type = 'primary'
-                )
-                if apply_auto_tune:
-                    if st.session_state.get('models_tb_train') is None:
-                        st.warning("Train models first!")   
-                    else:                             
-                        st.session_state.auto_tune_applied = True
-                        models_for_tuning = st.session_state.get('models_for_tuning')
-                        target_var = st.session_state.get('target_variable')
+                    st.multiselect(
+                        label = 'Select models for Hyperparameter Tuning',
+                        options = list(st.session_state.get('models_tb_train')),
+                        key = 'models_for_tuning',
+                        disabled = True if not st.session_state.get('models_tb_train') else False
+                    )
+                    apply_auto_tune = st.button(
+                        label = 'Apply Automatic Model Tuning',
+                        key = 'apply_auto_tuning',
+                        type = 'primary'
+                    )
+                    if apply_auto_tune:
+                        if st.session_state.get('models_tb_train') is None:
+                            st.warning("Train models first!")   
+                        else:                             
+                            st.session_state.auto_tune_applied = True
+                            models_for_tuning = st.session_state.get('models_for_tuning')
+                            target_var = st.session_state.get('target_variable')
 
-                        original_df = st.session_state.get('file_uploaded')
-                        X = st.session_state.get('final_model_df')
+                            original_df = st.session_state.get('file_uploaded')
+                            X = st.session_state.get('final_model_df')
 
-                        if X is None:
-                            X = original_df.drop(columns=[target_var]).copy()
-                        else:
-                            X = X.copy()
+                            if X is None:
+                                X = original_df.drop(columns=[target_var]).copy()
+                            else:
+                                X = X.copy()
 
-                        if X is not None and target_var is not None:
-                            y = original_df.loc[X.index, target_var].copy()
+                            if X is not None and target_var is not None:
+                                y = original_df.loc[X.index, target_var].copy()
 
-                            if len(X) != len(y):
-                                raise ValueError("Features and target have different lengths!")
+                                if len(X) != len(y):
+                                    raise ValueError("Features and target have different lengths!")
 
-                            with st.status("Tuning Models") as status:
-                            
-                                if 'Decision Tree Classifier' in models_for_tuning:
-                                    tuneDTC(X, y)
-                                if 'KNN Classifier' in models_for_tuning:
-                                    tuneKNNC(X, y)
-                                if 'Logistic Regression' in models_for_tuning:
-                                    tuneLGR(X, y)
-                                if 'Naive Bayes Classifier' in models_for_tuning:
-                                    tuneNB(X, y)
-                                if 'Random Forest Classifier' in models_for_tuning:
-                                    tuneRFC(X, y)
+                                with st.status("Tuning Models") as status:
+                                
+                                    if 'Decision Tree Classifier' in models_for_tuning:
+                                        tuneDTC(X, y)
+                                    if 'KNN Classifier' in models_for_tuning:
+                                        tuneKNNC(X, y)
+                                    if 'Logistic Regression' in models_for_tuning:
+                                        tuneLGR(X, y)
+                                    if 'Naive Bayes Classifier' in models_for_tuning:
+                                        tuneNB(X, y)
+                                    if 'Random Forest Classifier' in models_for_tuning:
+                                        tuneRFC(X, y)
 
-                                if 'Decision Tree Regressor' in models_for_tuning:
-                                    tuneDTR(X, y)
-                                if 'KNN Regressor' in models_for_tuning:
-                                    tuneKNNR(X, y)
-                                if 'Linear Regression' in models_for_tuning:
-                                    tuneLNR(X, y)
-                                if 'Polynomial Regression' in models_for_tuning:
-                                    tunePR(X, y)
-                                if 'Random Forest Regressor' in models_for_tuning:
-                                    tuneRFR(X, y)
+                                    if 'Decision Tree Regressor' in models_for_tuning:
+                                        tuneDTR(X, y)
+                                    if 'KNN Regressor' in models_for_tuning:
+                                        tuneKNNR(X, y)
+                                    if 'Linear Regression' in models_for_tuning:
+                                        tuneLNR(X, y)
+                                    if 'Polynomial Regression' in models_for_tuning:
+                                        tunePR(X, y)
+                                    if 'Random Forest Regressor' in models_for_tuning:
+                                        tuneRFR(X, y)
 
-                                if 'K Means Clustering' in models_for_tuning:
-                                    tuneKMC(X)
+                                    if 'K Means Clustering' in models_for_tuning:
+                                        tuneKMC(X)
 
-                                status.update(label = 'Models Tuned Successfully!', state = 'complete')
+                                    status.update(label = 'Models Tuned Successfully!', state = 'complete')
 
         regression_model_trained = st.session_state.get('regression_models_train_metrics_information')        
         regression_model_tested = st.session_state.get('regression_models_test_metrics_information')        
@@ -1344,7 +1344,7 @@ def ml_show():
                         ):
                             selected_model = st.session_state.get('selected_best_reg_model')
 
-                            st.session_state.final_selected_model = ''
+                            st.session_state.final_selected_model = None
 
                             if selected_model == 'Decision Tree Regression':
                                 st.session_state.final_selected_model = st.session_state.get('dtr_model')
@@ -1403,7 +1403,7 @@ def ml_show():
                         ):
                             selected_model = st.session_state.get('selected_best_class_model')
 
-                            st.session_state.final_selected_model = ''
+                            st.session_state.final_selected_model = None
 
                             if selected_model == 'Decision Tree Classifier':
                                 st.session_state.final_selected_model = st.session_state.get('dtc_model')
@@ -1457,7 +1457,7 @@ def ml_show():
                         ):
                             selected_model = st.session_state.get('selected_best_clustering_model')
 
-                            st.session_state.final_selected_model = ''
+                            st.session_state.final_selected_model = None
 
                             if selected_model == 'K Means Clustering':
                                 st.session_state.final_selected_model = st.session_state.get('kmc_model')

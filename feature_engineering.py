@@ -18,7 +18,7 @@ DT_OPERATIONS = {
     "Time Only": lambda s: s.dt.time,
 }
 
-def _sync_datetime_feature_mapping(data): #No
+def _sync_datetime_feature_mapping(data): 
     mapping = st.session_state.get("datetime_feature_mapping", {})
     mapping_id = st.session_state.get("datetime_feature_mapping_id")
 
@@ -40,7 +40,7 @@ def _sync_datetime_feature_mapping(data): #No
 
     return mapping
 
-def _store_datetime_feature_mapping(data, mapping): #No
+def _store_datetime_feature_mapping(data, mapping): 
     mapping_id = st.session_state.get("datetime_feature_mapping_id")
     if not mapping_id:
         mapping_id = str(uuid.uuid4())
@@ -784,7 +784,7 @@ def apply_dt_col_transformation():
 def fe_show():
     data = st.session_state.get("file_uploaded")
     if not isinstance(data, pd.DataFrame) or data.empty:
-        st.warning("Upload a file to start feature engineering.")
+        st.error("Upload a Dataset First!")
         return
     _sync_datetime_feature_mapping(data)
     

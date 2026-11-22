@@ -369,7 +369,7 @@ def univariate_analysis(cat_col, num_col, bool_col):
 
                                 st.plotly_chart(fig, width = 'stretch')
     except Exception as err:
-        st.error("An Unknown Error Occured!", err)
+        st.error(f"An Unknown Error Occured!: {err}")
 
 @st.fragment
 def bivariate_analysis(cat_col, num_col, dt_col, bool_col):
@@ -1228,8 +1228,8 @@ def multivariate_analysis(cat_col, num_col, dt_col, bool_col):
 def eda_show():
     df = st.session_state.get('file_uploaded')
 
-    if not isinstance(df, pd.DataFrame):
-        st.warning('Upload a Dataset First!')
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        st.error('Upload a Dataset First!')
         return
     num_col = sorted(df.select_dtypes(
         include = 'number'

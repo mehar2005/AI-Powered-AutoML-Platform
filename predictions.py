@@ -39,7 +39,7 @@ def _get_input_options(data, column):
         return []
     return sorted(data[column].dropna().unique().tolist())
 
-def _get_numeric_categorical_columns(model_df, categorical_mapping, one_hot_mapping, datetime_columns):
+def _get_numeric_categorical_columns(model_df, categorical_mapping, one_hot_mapping, datetime_columns): #To identify actual numerical columns.
     excluded_columns = set(categorical_mapping)
     excluded_columns.update(
         dummy_column

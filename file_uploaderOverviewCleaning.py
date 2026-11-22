@@ -177,8 +177,6 @@ def apply_column_name_transformation():
         update_active_dataset(df_copy)
 
         st.session_state.column_name_op_applied_message = "Column Name Updated Successfully!"
-
-        st.rerun()
     except Exception:
         st.session_state.apply_column_name_transformation_exception = "An error occured while updating column names."
 
@@ -268,7 +266,6 @@ def apply_column_values_transformation():
         }
 
         st.session_state.column_values_transformation_msg = messages[c_type]
-        st.rerun()
     except Exception as e:
         st.session_state.apply_column_values_transformation_exception = "An error occured while updating column values!"
 
@@ -392,7 +389,6 @@ def apply_data_format_transformation():
             f"Data format corrected successfully! "
             f"{invalid_values} invalid values could not be converted."
         )
-        st.rerun()
 
     except (ValueError, TypeError, KeyError) as e:
         st.session_state.apply_data_format_transformation_exception = "An error occured while changing format of data!"
@@ -529,7 +525,7 @@ def dtype_detection_changing():
 
             col_nm = st.selectbox(
                 label = 'Select column',
-                options = df.columns,
+                options = sorted(df.columns),
                 key = 'dtype_column'
             )
 
@@ -913,7 +909,6 @@ def del_rows_bool():
 
     st.session_state.rows_deletion_message = 'Rows Deleted Successfully!'
 
-@st.fragment
 def data_values_handling():
     try:
         st.subheader("Data Values Handling", text_alignment = 'center')
