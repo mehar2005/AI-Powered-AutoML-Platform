@@ -358,3 +358,6 @@ def predictions_show():
 
     except Exception as err:
         st.error(err)
+
+
+print("Finally Project Completed!")
